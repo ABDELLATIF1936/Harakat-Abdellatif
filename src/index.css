@@ -1,0 +1,77 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Space Grotesk", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  /* Premium Star Gold / Amber color mapping (comme la couleur d'etoiles de son site) */
+  --color-indigo-50: #fdfbeb;
+  --color-indigo-100: #fef8c3;
+  --color-indigo-200: #fdf187;
+  --color-indigo-300: #fbde43;
+  --color-indigo-400: #f9c716;
+  --color-indigo-500: #f59e0b;
+  --color-indigo-600: #d97706;
+  --color-indigo-700: #b45309;
+  --color-indigo-850: #622a07;
+  --color-indigo-900: #4a1d04;
+  --color-indigo-950: #250d01;
+
+  --color-teal-50: #fdfbeb;
+  --color-teal-100: #fef8c3;
+  --color-teal-200: #fdf187;
+  --color-teal-300: #fbde43;
+  --color-teal-400: #f9c716;
+  --color-teal-500: #f59e0b;
+  --color-teal-600: #d97706;
+  --color-teal-700: #b45309;
+  --color-teal-850: #622a07;
+  --color-teal-900: #4a1d04;
+  --color-teal-950: #250d01;
+}
+
+@layer utilities {
+  /* Dynamic utilities for modern layouts */
+  .glass-card {
+    background-color: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(226, 232, 240, 0.8);
+  }
+  
+  .dark .glass-card {
+    background-color: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(51, 65, 85, 0.5);
+  }
+
+  .neon-glow {
+    box-shadow: 0 0 15px rgba(217, 119, 6, 0.15);
+  }
+
+  /* Custom glass scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.3);
+    border-radius: 4px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(148, 163, 184, 0.5);
+  }
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-sans);
+  overflow-x: hidden;
+}

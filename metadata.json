@@ -1,0 +1,6 @@
+{
+  "name": "Portfolio Master Informatique",
+  "description": "Site portfolio professionnel et tableau de bord d'administration pour étudiant en Master Informatique.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
