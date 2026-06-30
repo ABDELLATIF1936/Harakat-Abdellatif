@@ -21,6 +21,7 @@ export interface Education {
   description: string;
   grade?: string; // e.g., "Mention Bien"
   visible: boolean;
+  order: number;
 }
 
 export interface ExperiencePro {
@@ -33,6 +34,7 @@ export interface ExperiencePro {
   logoUrl?: string;
   tags: string[];
   visible: boolean;
+  order: number;
 }
 
 export interface ExperienceBenevole {
@@ -44,6 +46,7 @@ export interface ExperienceBenevole {
   description: string;
   tags: string[];
   visible: boolean;
+  order: number;
 }
 
 export interface Project {
@@ -58,6 +61,7 @@ export interface Project {
   tags: string[];
   challenges: string;
   visible: boolean;
+  order: number;
 }
 
 export interface Skill {
@@ -66,6 +70,7 @@ export interface Skill {
   category: "languages" | "frameworks" | "tools" | "soft_skills";
   level: number; // 0 to 100
   visible: boolean;
+  order: number;
 }
 
 export interface Certificate {
@@ -75,7 +80,9 @@ export interface Certificate {
   issueDate: string;
   credentialUrl: string;
   imageUrl: string;
+  impactProfessionnel: string;
   visible: boolean;
+  order: number;
 }
 
 export interface Testimonial {

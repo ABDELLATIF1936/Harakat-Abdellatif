@@ -1,6 +1,7 @@
 import { motion } from "motion/react";
 import { Github, Linkedin, Mail, ArrowRight, Download, Play, Leaf } from "lucide-react";
 import { Profile } from "../types";
+import ProfileCard from "./ProfileCard";
 
 interface HeroProps {
   profile: Profile;
@@ -159,24 +160,7 @@ export default function Hero({ profile }: HeroProps) {
             initial="hidden"
             animate="visible"
           >
-            <div className="relative group">
-              {/* Outer decorative gradient border */}
-              <div className="absolute -inset-1.5 bg-gradient-to-r from-indigo-500 to-indigo-600 rounded-3xl blur opacity-30 group-hover:opacity-55 transition duration-1000 group-hover:duration-200" />
-
-              {/* Card Container */}
-              <div className="relative bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-xl max-w-sm">
-                <img
-                  src={profile.photoUrl}
-                  alt={profile.name}
-                  referrerPolicy="no-referrer"
-                  className="w-full h-80 object-cover rounded-2xl grayscale hover:grayscale-0 transition duration-500"
-                />
-                <div className="mt-4 text-center">
-                  <p className="font-display font-bold text-lg text-slate-800 dark:text-slate-100">{profile.name}</p>
-                  <p className="text-xs font-mono text-indigo-500 dark:text-indigo-400">@abdellatif-harakat</p>
-                </div>
-              </div>
-            </div>
+            <ProfileCard name="Harakat" photoUrl={profile.photoUrl} />
           </motion.div>
         </div>
       </div>

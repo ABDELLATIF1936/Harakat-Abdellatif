@@ -1,4 +1,5 @@
 import { motion } from "motion/react";
+import { useState } from "react";
 import { Briefcase, Heart, Calendar, MapPin, Tag } from "lucide-react";
 import { ExperiencePro, ExperienceBenevole } from "../types";
 
@@ -11,8 +12,19 @@ export default function Experience({
   experienceProList,
   experienceBenevoleList,
 }: ExperienceProps) {
-  const visiblePro = experienceProList.filter((exp) => exp.visible);
-  const visibleBenevole = experienceBenevoleList.filter((exp) => exp.visible);
+  const [showAllPro, setShowAllPro] = useState(false);
+  const [showAllBenevole, setShowAllBenevole] = useState(false);
+
+  const visiblePro = experienceProList
+    .filter((exp) => exp.visible)
+    .sort((a, b) => a.order - b.order);
+  const visibleBenevole = experienceBenevoleList
+    .filter((exp) => exp.visible)
+    .sort((a, b) => a.order - b.order);
+  const displayedPro = showAllPro ? visiblePro : visiblePro.slice(0, 3);
+  const displayedBenevole = showAllBenevole ? visibleBenevole : visibleBenevole.slice(0, 3);
+  const hasMorePro = visiblePro.length > 3;
+  const hasMoreBenevole = visibleBenevole.length > 3;
 
   return (
     <section id="experience" className="py-24 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800">
@@ -43,7 +55,7 @@ export default function Experience({
             </div>
 
             <div className="space-y-6 relative pl-4 border-l-2 border-indigo-100 dark:border-indigo-950">
-              {visiblePro.map((exp, idx) => (
+              {displayedPro.map((exp, idx) => (
                 <motion.div
                   key={exp.id}
                   initial={{ opacity: 0, x: -20 }}
@@ -111,6 +123,17 @@ export default function Experience({
               {visiblePro.length === 0 && (
                 <div className="text-slate-400 text-sm py-4">Aucune expérience enregistrée.</div>
               )}
+              {hasMorePro && (
+                <div className="mt-6 text-center">
+                  <button
+                    type="button"
+                    onClick={() => setShowAllPro((prev) => !prev)}
+                    className="inline-flex items-center justify-center px-5 py-2 rounded-full bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-500 transition"
+                  >
+                    {showAllPro ? "Voir moins" : "Voir plus"}
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
@@ -126,7 +149,7 @@ export default function Experience({
             </div>
 
             <div className="space-y-6 relative pl-4 border-l-2 border-teal-100 dark:border-teal-950">
-              {visibleBenevole.map((exp, idx) => (
+              {displayedBenevole.map((exp, idx) => (
                 <motion.div
                   key={exp.id}
                   initial={{ opacity: 0, x: 20 }}
@@ -190,6 +213,17 @@ export default function Experience({
               ))}
               {visibleBenevole.length === 0 && (
                 <div className="text-slate-400 text-sm py-4">Aucun engagement associatif enregistré.</div>
+              )}
+              {hasMoreBenevole && (
+                <div className="mt-6 text-center">
+                  <button
+                    type="button"
+                    onClick={() => setShowAllBenevole((prev) => !prev)}
+                    className="inline-flex items-center justify-center px-5 py-2 rounded-full bg-teal-600 text-white text-sm font-semibold hover:bg-teal-500 transition"
+                  >
+                    {showAllBenevole ? "Voir moins" : "Voir plus"}
+                  </button>
+                </div>
               )}
             </div>
           </div>

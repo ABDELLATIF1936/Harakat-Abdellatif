@@ -134,11 +134,11 @@ export default function Footer({ profile, setView, currentView }: FooterProps) {
             {currentView === "portfolio" ? (
               <button
                 id="footer-admin-link"
-                onClick={() => setView("login")}
+                onClick={() => setView("home")}
                 className="inline-flex items-center gap-1 text-slate-500 hover:text-indigo-400 transition"
               >
                 <ShieldAlert className="w-3.5 h-3.5" />
-                Tableau de bord Administeu r - Accès réservé
+                Tableau de bord Administeur - Accès réservé
               </button>
             ) : (
               <button

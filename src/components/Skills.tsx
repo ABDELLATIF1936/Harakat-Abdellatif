@@ -11,8 +11,11 @@ export default function Skills({ skillList }: SkillsProps) {
   const [activeCategory, setActiveCategory] = useState<
     "all" | "languages" | "frameworks" | "tools" | "soft_skills"
   >("all");
+  const [showAllSkills, setShowAllSkills] = useState(false);
 
-  const visibleSkills = skillList.filter((sk) => sk.visible);
+  const visibleSkills = skillList
+    .filter((sk) => sk.visible)
+    .sort((a, b) => a.order - b.order);
 
   const categories = [
     { value: "all", label: "Toutes", icon: null },
@@ -26,6 +29,8 @@ export default function Skills({ skillList }: SkillsProps) {
     activeCategory === "all"
       ? visibleSkills
       : visibleSkills.filter((sk) => sk.category === activeCategory);
+  const displayedSkills = showAllSkills ? filteredSkills : filteredSkills.slice(0, 8);
+  const hasMoreSkills = filteredSkills.length > 8;
 
   return (
     <section id="skills" className="py-24 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-850">
@@ -50,7 +55,10 @@ export default function Skills({ skillList }: SkillsProps) {
             return (
               <button
                 key={cat.value}
-                onClick={() => setActiveCategory(cat.value as any)}
+                onClick={() => {
+                  setActiveCategory(cat.value as any);
+                  setShowAllSkills(false);
+                }}
                 className={`inline-flex items-center gap-1.5 px-5 py-2 rounded-full text-xs font-bold tracking-normal transition duration-300 cursor-pointer ${
                   isActive
                     ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/10"
@@ -69,7 +77,7 @@ export default function Skills({ skillList }: SkillsProps) {
           layout
           className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
         >
-          {filteredSkills.map((skill) => {
+          {displayedSkills.map((skill) => {
             // Pick visual decorations based on category
             const getCategoryTag = (cat: string) => {
               switch (cat) {
@@ -123,13 +131,23 @@ export default function Skills({ skillList }: SkillsProps) {
               </motion.div>
             );
           })}
-          {filteredSkills.length === 0 && (
+          {displayedSkills.length === 0 && (
             <div className="col-span-full text-center py-12 text-slate-400">
               Aucune compétence disponible dans cette catégorie.
             </div>
           )}
         </motion.div>
-
+        {hasMoreSkills && (
+          <div className="mt-10 text-center">
+            <button
+              type="button"
+              onClick={() => setShowAllSkills((prev) => !prev)}
+              className="inline-flex items-center justify-center px-6 py-3 rounded-full bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-500 transition"
+            >
+              {showAllSkills ? "Voir moins" : "Voir plus"}
+            </button>
+          </div>
+        )}
       </div>
     </section>
   );

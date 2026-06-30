@@ -166,7 +166,7 @@ export default function Contact({ profile, onSendMessage }: ContactProps) {
               <div className="absolute inset-0 opacity-40 bg-[radial-gradient(#6366f1_1px,transparent_1px)] [background-size:16px_16px]" />
               <div className="text-center relative z-10 px-4">
                 <MapPin className="w-8 h-8 text-indigo-600 dark:text-indigo-400 mx-auto animate-bounce mb-2" />
-                <p className="font-semibold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-300">Région de Paris / Île-de-France</p>
+                <p className="font-semibold text-xs uppercase tracking-wider text-slate-500 dark:text-slate-300">Casablanca-settat / Maroc</p>
                 <p className="text-[11px] text-slate-400 mt-1">Déplacements et télétravail hybrides acceptés</p>
               </div>
             </div>

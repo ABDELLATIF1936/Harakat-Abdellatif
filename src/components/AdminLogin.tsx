@@ -7,8 +7,8 @@ interface AdminLoginProps {
 }
 
 export default function AdminLogin({ onLoginSuccess, setView }: AdminLoginProps) {
-  const [email, setEmail] = useState("admin@portfolio.fr");
-  const [password, setPassword] = useState("admin123");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [errorCode, setErrorCode] = useState("");
 
   const handleFormSubmit = (e: React.FormEvent) => {
@@ -109,8 +109,7 @@ export default function AdminLogin({ onLoginSuccess, setView }: AdminLoginProps)
             <ShieldAlert className="w-4 h-4" />
             Identifiants de démonstration disponibles pour l’accès admin.
           </p>
-          <p>Utilisateur : <strong>admin@portfolio.fr</strong></p>
-          <p>Mot de passe : <strong>admin123</strong></p>
+          
         </div>
 
         {/* Return button */}

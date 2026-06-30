@@ -1,4 +1,5 @@
 import { motion } from "motion/react";
+import { useState } from "react";
 import { GraduationCap, Calendar, MapPin, Award } from "lucide-react";
 import { Education } from "../types";
 
@@ -7,8 +8,14 @@ interface EducationProps {
 }
 
 export default function EducationComp({ educationList }: EducationProps) {
-  // Only display visible ones on the user portfolio
-  const visibleEducation = educationList.filter((edu) => edu.visible);
+  const [showAllEducation, setShowAllEducation] = useState(false);
+
+  // Only display visible ones on the user portfolio, sorted by order
+  const visibleEducation = educationList
+    .filter((edu) => edu.visible)
+    .sort((a, b) => a.order - b.order);
+  const displayedEducation = showAllEducation ? visibleEducation : visibleEducation.slice(0, 3);
+  const hasMoreEducation = visibleEducation.length > 3;
 
   return (
     <section id="education" className="py-24 bg-slate-50 dark:bg-slate-950/60 border-t border-slate-100 dark:border-slate-800">
@@ -31,7 +38,7 @@ export default function EducationComp({ educationList }: EducationProps) {
           <div className="absolute left-4 md:left-1/2 top-0 bottom-0 w-0.5 bg-indigo-100 dark:bg-indigo-950" />
 
           <div className="space-y-12">
-            {visibleEducation.map((edu, idx) => {
+            {displayedEducation.map((edu, idx) => {
               const isEven = idx % 2 === 0;
               return (
                 <motion.div
@@ -51,14 +58,12 @@ export default function EducationComp({ educationList }: EducationProps) {
 
                   {/* Card Block */}
                   <div className={`w-full md:w-1/2 pl-12 md:pl-0 ${
-                    isEven ? "md:pr-12 text-left md:text-right" : "md:pl-12 text-left"
+                    isEven ? "md:pr-12 text-left" : "md:pl-12 text-left"
                   }`}>
                     <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-sm hover:shadow-md hover:border-slate-200 dark:hover:border-slate-700 transition">
                       
                       {/* School & Period badge */}
-                      <div className={`flex flex-wrap items-center gap-2 mb-3 text-xs font-mono font-bold text-indigo-600 dark:text-indigo-400 ${
-                        isEven ? "justify-start md:justify-end" : "justify-start"
-                      }`}>
+                      <div className={`flex flex-wrap items-center gap-2 mb-3 text-xs font-mono font-bold text-indigo-600 dark:text-indigo-400 justify-start`}>
                         <span className="inline-flex items-center gap-1 bg-indigo-50 dark:bg-indigo-950/40 px-2.5 py-1 rounded-md">
                           <Calendar className="w-3.5 h-3.5" />
                           {edu.period}
@@ -86,9 +91,7 @@ export default function EducationComp({ educationList }: EducationProps) {
 
                       {/* Grade Mention badge */}
                       {edu.grade && (
-                        <div className={`inline-flex items-center gap-1.5 p-1.5 px-3 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-400 text-xs font-semibold ${
-                          isEven ? "md:float-right mb-2" : "mb-2"
-                        }`}>
+                        <div className={`inline-flex items-center gap-1.5 p-1.5 px-3 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-400 text-xs font-semibold mb-2`}>
                           <Award className="w-3.5 h-3.5" />
                           {edu.grade}
                         </div>
@@ -100,6 +103,17 @@ export default function EducationComp({ educationList }: EducationProps) {
               );
             })}
           </div>
+          {hasMoreEducation && (
+            <div className="mt-8 text-center">
+              <button
+                type="button"
+                onClick={() => setShowAllEducation((prev) => !prev)}
+                className="inline-flex items-center justify-center px-6 py-3 rounded-full bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-500 transition"
+              >
+                {showAllEducation ? "Voir moins" : "Voir plus"}
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </section>

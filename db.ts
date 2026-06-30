@@ -28,19 +28,6 @@ import {
   ContactMessage,
 } from "./src/types";
 
-// Import local static defaults as initial seed data
-import {
-  initialProfile,
-  initialEducation,
-  initialExperiencePro,
-  initialExperienceBenevole,
-  initialProjects,
-  initialSkills,
-  initialCertificates,
-  initialTestimonials,
-  initialMessages,
-} from "./src/data";
-
 // Database Connection Manager - MYSQL ONLY (No local fallback)
 let pool: mysql.Pool | null = null;
 let isUsingMySQL = false;
@@ -189,7 +176,8 @@ export async function initializeDatabase() {
         location VARCHAR(255),
         description TEXT,
         grade VARCHAR(255),
-        visible TINYINT(1) DEFAULT 1
+        visible TINYINT(1) DEFAULT 1,
+        \`order\` INT DEFAULT 0
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     `);
 
@@ -204,7 +192,8 @@ export async function initializeDatabase() {
         description TEXT,
         logoUrl LONGTEXT,
         tags TEXT,
-        visible TINYINT(1) DEFAULT 1
+        visible TINYINT(1) DEFAULT 1,
+        \`order\` INT DEFAULT 0
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     `);
 
@@ -218,7 +207,8 @@ export async function initializeDatabase() {
         location VARCHAR(255),
         description TEXT,
         tags TEXT,
-        visible TINYINT(1) DEFAULT 1
+        visible TINYINT(1) DEFAULT 1,
+        \`order\` INT DEFAULT 0
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     `);
 
@@ -235,7 +225,8 @@ export async function initializeDatabase() {
         demoUrl VARCHAR(255),
         tags TEXT,
         challenges TEXT,
-        visible TINYINT(1) DEFAULT 1
+        visible TINYINT(1) DEFAULT 1,
+        \`order\` INT DEFAULT 0
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     `);
 
@@ -246,7 +237,8 @@ export async function initializeDatabase() {
         name VARCHAR(255) NOT NULL,
         category VARCHAR(100),
         level INT DEFAULT 0,
-        visible TINYINT(1) DEFAULT 1
+        visible TINYINT(1) DEFAULT 1,
+        \`order\` INT DEFAULT 0
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     `);
 
@@ -258,8 +250,8 @@ export async function initializeDatabase() {
         issuer VARCHAR(255),
         issueDate VARCHAR(100),
         credentialUrl VARCHAR(255),
-        imageUrl LONGTEXT,
-        visible TINYINT(1) DEFAULT 1
+        imageUrl LONGTEXT,        impactProfessionnel LONGTEXT,        visible TINYINT(1) DEFAULT 1,
+        \`order\` INT DEFAULT 0
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     `);
 
@@ -273,7 +265,8 @@ export async function initializeDatabase() {
         feedback TEXT,
         rating INT DEFAULT 5,
         avatarUrl LONGTEXT,
-        visible TINYINT(1) DEFAULT 1
+        visible TINYINT(1) DEFAULT 1,
+        \`order\` INT DEFAULT 0
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     `);
 
@@ -291,119 +284,44 @@ export async function initializeDatabase() {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     `);
 
-    console.log("All MySQL tables checked/created successfully.");
+    // Add missing 'order' columns to existing tables for migration
+    const tablesToAddOrder = [
+      'portfolio_education',
+      'portfolio_experience_pro',
+      'portfolio_experience_benevole',
+      'portfolio_projects',
+      'portfolio_skills',
+      'portfolio_certificates',
+      'portfolio_testimonials'
+    ];
 
-    // Check if profile exists; seed if empty
-    const [profiles] = await pool.query("SELECT * FROM portfolio_profile LIMIT 1") as any[];
-    if (profiles.length === 0) {
-      console.log("MySQL database table 'portfolio_profile' is empty. Seeding defaults...");
-      
-      // Profile Seeding
-      await pool.query(
-        `INSERT INTO portfolio_profile (id, name, title, bio, photoUrl, cvUrl, email, phone, location, status, github, linkedin)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [
-          "default",
-          initialProfile.name,
-          initialProfile.title,
-          initialProfile.bio,
-          initialProfile.photoUrl,
-          initialProfile.cvUrl,
-          initialProfile.email,
-          initialProfile.phone,
-          initialProfile.location,
-          initialProfile.status,
-          initialProfile.github,
-          initialProfile.linkedin,
-        ]
-      );
-
-      // Education Seeding
-      for (const edu of initialEducation) {
-        await pool.query(
-          `INSERT INTO portfolio_education (id, school, degree, period, location, description, grade, visible)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-          [edu.id, edu.school, edu.degree, edu.period, edu.location, edu.description, edu.grade || null, edu.visible ? 1 : 0]
-        );
+    for (const tableName of tablesToAddOrder) {
+      try {
+        const [columns] = await pool.query(
+          `SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND COLUMN_NAME = 'order'`,
+          [mysqlDatabase, tableName]
+        ) as any[];
+        
+        if (columns.length === 0) {
+          await pool.query(`ALTER TABLE ${tableName} ADD COLUMN \`order\` INT DEFAULT 0`);
+        }
+      } catch (err: any) {
+        // Column might already exist, continue
       }
-
-      // Experience Pro Seeding
-      for (const exp of initialExperiencePro) {
-        await pool.query(
-          `INSERT INTO portfolio_experience_pro (id, company, role, period, location, description, logoUrl, tags, visible)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [exp.id, exp.company, exp.role, exp.period, exp.location, exp.description, exp.logoUrl || null, JSON.stringify(exp.tags), exp.visible ? 1 : 0]
-        );
-      }
-
-      // Experience Benevole Seeding
-      for (const bene of initialExperienceBenevole) {
-        await pool.query(
-          `INSERT INTO portfolio_experience_benevole (id, organization, role, period, location, description, tags, visible)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-          [bene.id, bene.organization, bene.role, bene.period, bene.location || null, bene.description, JSON.stringify(bene.tags), bene.visible ? 1 : 0]
-        );
-      }
-
-      // Projects Seeding
-      for (const proj of initialProjects) {
-        await pool.query(
-          `INSERT INTO portfolio_projects (id, title, description, longDescription, imageUrl, imageUrls, githubUrl, demoUrl, tags, challenges, visible)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [
-            proj.id,
-            proj.title,
-            proj.description,
-            proj.longDescription,
-            proj.imageUrl,
-            JSON.stringify(proj.imageUrls || []),
-            proj.githubUrl,
-            proj.demoUrl,
-            JSON.stringify(proj.tags),
-            proj.challenges,
-            proj.visible ? 1 : 0,
-          ]
-        );
-      }
-
-      // Skills Seeding
-      for (const sk of initialSkills) {
-        await pool.query(
-          `INSERT INTO portfolio_skills (id, name, category, level, visible)
-           VALUES (?, ?, ?, ?, ?)`,
-          [sk.id, sk.name, sk.category, sk.level, sk.visible ? 1 : 0]
-        );
-      }
-
-      // Certificates Seeding
-      for (const cert of initialCertificates) {
-        await pool.query(
-          `INSERT INTO portfolio_certificates (id, name, issuer, issueDate, credentialUrl, imageUrl, visible)
-           VALUES (?, ?, ?, ?, ?, ?, ?)`,
-          [cert.id, cert.name, cert.issuer, cert.issueDate, cert.credentialUrl, cert.imageUrl, cert.visible ? 1 : 0]
-        );
-      }
-
-      // Testimonials Seeding
-      for (const test of initialTestimonials) {
-        await pool.query(
-          `INSERT INTO portfolio_testimonials (id, name, role, company, feedback, rating, avatarUrl, visible)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-          [test.id, test.name, test.role, test.company, test.feedback, test.rating, test.avatarUrl, test.visible ? 1 : 0]
-        );
-      }
-
-      // Messages Seeding
-      for (const msg of initialMessages) {
-        await pool.query(
-          `INSERT INTO portfolio_messages (id, name, email, subject, message, date, \`read\`, status)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-          [msg.id, msg.name, msg.email, msg.subject, msg.message, msg.date, msg.read ? 1 : 0, msg.status]
-        );
-      }
-
-      console.log("Seeding to MySQL database completed.");
     }
+    try {
+      const [certColumns] = await pool.query(
+        `SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'portfolio_certificates' AND COLUMN_NAME = 'impactProfessionnel'`,
+        [mysqlDatabase]
+      ) as any[];
+      if (certColumns.length === 0) {
+        await pool.query(`ALTER TABLE portfolio_certificates ADD COLUMN impactProfessionnel LONGTEXT`);
+      }
+    } catch (err: any) {
+      // Column might already exist, continue
+    }
+    console.log("All MySQL tables checked/created successfully.");
+    console.log("Database schema ready. No automatic seeding performed - please populate via admin dashboard.");
   } catch (err: any) {
     console.error("❌ Failed to initialize MySQL schema tables:", err);
     throw new Error(`Database initialization failed: ${err.message}`);
@@ -428,13 +346,25 @@ export async function getPortfolioData() {
       email: profiles[0].email,
       phone: profiles[0].phone,
       location: profiles[0].location,
-      status: profiles[0].status || initialProfile.status,
+      status: profiles[0].status || "",
       linkedin: profiles[0].linkedin,
       github: profiles[0].github,
-    } : initialProfile;
+    } : {
+      name: "Portfolio",
+      title: "",
+      bio: "",
+      photoUrl: "",
+      cvUrl: "",
+      email: "",
+      phone: "",
+      location: "",
+      status: "",
+      linkedin: "",
+      github: "",
+    };
 
     // 2. Education
-    const [eduRows] = await pool.query("SELECT * FROM portfolio_education") as any[];
+    const [eduRows] = await pool.query("SELECT * FROM portfolio_education ORDER BY `order` ASC") as any[];
     const educationList: Education[] = eduRows.map((r: any) => ({
       id: r.id,
       school: r.school,
@@ -444,10 +374,11 @@ export async function getPortfolioData() {
       description: r.description,
       grade: r.grade || undefined,
       visible: Boolean(r.visible),
+      order: r.order || 0,
     }));
 
     // 3. Experience Pro
-    const [expProRows] = await pool.query("SELECT * FROM portfolio_experience_pro") as any[];
+    const [expProRows] = await pool.query("SELECT * FROM portfolio_experience_pro ORDER BY `order` ASC") as any[];
     const experienceProList: ExperiencePro[] = expProRows.map((r: any) => {
       let tags: string[] = [];
       try {
@@ -465,11 +396,12 @@ export async function getPortfolioData() {
         logoUrl: r.logoUrl || undefined,
         tags,
         visible: Boolean(r.visible),
+        order: r.order || 0,
       };
     });
 
     // 4. Experience Benevole
-    const [expBeneRows] = await pool.query("SELECT * FROM portfolio_experience_benevole") as any[];
+    const [expBeneRows] = await pool.query("SELECT * FROM portfolio_experience_benevole ORDER BY `order` ASC") as any[];
     const experienceBenevoleList: ExperienceBenevole[] = expBeneRows.map((r: any) => {
       let tags: string[] = [];
       try {
@@ -486,11 +418,12 @@ export async function getPortfolioData() {
         description: r.description,
         tags,
         visible: Boolean(r.visible),
+        order: r.order || 0,
       };
     });
 
     // 5. Projects
-    const [projRows] = await pool.query("SELECT * FROM portfolio_projects") as any[];
+    const [projRows] = await pool.query("SELECT * FROM portfolio_projects ORDER BY `order` ASC") as any[];
     const projectList: Project[] = projRows.map((r: any) => {
       let tags: string[] = [];
       let imageUrls: string[] = [];
@@ -516,21 +449,23 @@ export async function getPortfolioData() {
         tags,
         challenges: r.challenges,
         visible: Boolean(r.visible),
+        order: r.order || 0,
       };
     });
 
     // 6. Skills
-    const [skillRows] = await pool.query("SELECT * FROM portfolio_skills") as any[];
+    const [skillRows] = await pool.query("SELECT * FROM portfolio_skills ORDER BY `order` ASC") as any[];
     const skillList: Skill[] = skillRows.map((r: any) => ({
       id: r.id,
       name: r.name,
       category: r.category as any,
       level: r.level,
       visible: Boolean(r.visible),
+      order: r.order || 0,
     }));
 
     // 7. Certificates
-    const [certRows] = await pool.query("SELECT * FROM portfolio_certificates") as any[];
+    const [certRows] = await pool.query("SELECT * FROM portfolio_certificates ORDER BY `order` ASC") as any[];
     const certificateList: Certificate[] = certRows.map((r: any) => ({
       id: r.id,
       name: r.name,
@@ -538,20 +473,23 @@ export async function getPortfolioData() {
       issueDate: r.issueDate,
       credentialUrl: r.credentialUrl,
       imageUrl: r.imageUrl,
+      impactProfessionnel: r.impactProfessionnel || "",
       visible: Boolean(r.visible),
+      order: r.order || 0,
     }));
 
     // 8. Testimonials
-    const [testRows] = await pool.query("SELECT * FROM portfolio_testimonials") as any[];
+    const [testRows] = await pool.query("SELECT * FROM portfolio_testimonials ORDER BY `order` ASC") as any[];
     const testimonialList: Testimonial[] = testRows.map((r: any) => ({
       id: r.id,
       name: r.name,
       role: r.role,
       company: r.company,
       feedback: r.feedback,
-      rating: r.rating,
+      rating: r.rating || 5,
       avatarUrl: r.avatarUrl,
       visible: Boolean(r.visible),
+      order: r.order || 0,
     }));
 
     return {
@@ -586,11 +524,14 @@ export async function savePortfolioData(dataset: {
     throw new Error("❌ MySQL pool is not available");
   }
 
+  const connection = await pool.getConnection();
   try {
+    await connection.beginTransaction();
+
     // 1. Profile Save
     if (dataset.profile) {
       const p = dataset.profile;
-      await pool.query(
+      await connection.query(
         `INSERT INTO portfolio_profile (id, name, title, bio, photoUrl, cvUrl, email, phone, location, status, github, linkedin)
          VALUES ('default', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          ON DUPLICATE KEY UPDATE
@@ -603,47 +544,47 @@ export async function savePortfolioData(dataset: {
 
     // 2. Education Save (Replace entire list or sync dynamically)
     if (dataset.educationList) {
-      await pool.query("DELETE FROM portfolio_education");
+      await connection.query("DELETE FROM portfolio_education");
       for (const edu of dataset.educationList) {
-        await pool.query(
-          `INSERT INTO portfolio_education (id, school, degree, period, location, description, grade, visible)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-          [edu.id, edu.school, edu.degree, edu.period, edu.location, edu.description, edu.grade || null, edu.visible ? 1 : 0]
+        await connection.query(
+          `INSERT INTO portfolio_education (id, school, degree, period, location, description, grade, visible, \`order\`)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [edu.id, edu.school, edu.degree, edu.period, edu.location, edu.description, edu.grade || null, edu.visible ? 1 : 0, edu.order || 0]
         );
       }
     }
 
     // 3. Experience Pro Save
     if (dataset.experienceProList) {
-      await pool.query("DELETE FROM portfolio_experience_pro");
+      await connection.query("DELETE FROM portfolio_experience_pro");
       for (const exp of dataset.experienceProList) {
-        await pool.query(
-          `INSERT INTO portfolio_experience_pro (id, company, role, period, location, description, logoUrl, tags, visible)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [exp.id, exp.company, exp.role, exp.period, exp.location, exp.description, exp.logoUrl || null, JSON.stringify(exp.tags), exp.visible ? 1 : 0]
+        await connection.query(
+          `INSERT INTO portfolio_experience_pro (id, company, role, period, location, description, logoUrl, tags, visible, \`order\`)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [exp.id, exp.company, exp.role, exp.period, exp.location, exp.description, exp.logoUrl || null, JSON.stringify(exp.tags), exp.visible ? 1 : 0, exp.order || 0]
         );
       }
     }
 
     // 4. Experience Benevole Save
     if (dataset.experienceBenevoleList) {
-      await pool.query("DELETE FROM portfolio_experience_benevole");
+      await connection.query("DELETE FROM portfolio_experience_benevole");
       for (const bene of dataset.experienceBenevoleList) {
-        await pool.query(
-          `INSERT INTO portfolio_experience_benevole (id, organization, role, period, location, description, tags, visible)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-          [bene.id, bene.organization, bene.role, bene.period, bene.location || null, bene.description, JSON.stringify(bene.tags), bene.visible ? 1 : 0]
+        await connection.query(
+          `INSERT INTO portfolio_experience_benevole (id, organization, role, period, location, description, tags, visible, \`order\`)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [bene.id, bene.organization, bene.role, bene.period, bene.location || null, bene.description, JSON.stringify(bene.tags), bene.visible ? 1 : 0, bene.order || 0]
         );
       }
     }
 
     // 5. Projects Save
     if (dataset.projectList) {
-      await pool.query("DELETE FROM portfolio_projects");
+      await connection.query("DELETE FROM portfolio_projects");
       for (const proj of dataset.projectList) {
-        await pool.query(
-          `INSERT INTO portfolio_projects (id, title, description, longDescription, imageUrl, imageUrls, githubUrl, demoUrl, tags, challenges, visible)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        await connection.query(
+          `INSERT INTO portfolio_projects (id, title, description, longDescription, imageUrl, imageUrls, githubUrl, demoUrl, tags, challenges, visible, \`order\`)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             proj.id,
             proj.title,
@@ -656,6 +597,7 @@ export async function savePortfolioData(dataset: {
             JSON.stringify(proj.tags),
             proj.challenges,
             proj.visible ? 1 : 0,
+            proj.order || 0
           ]
         );
       }
@@ -663,46 +605,59 @@ export async function savePortfolioData(dataset: {
 
     // 6. Skills Save
     if (dataset.skillList) {
-      await pool.query("DELETE FROM portfolio_skills");
+      await connection.query("DELETE FROM portfolio_skills");
       for (const sk of dataset.skillList) {
-        await pool.query(
-          `INSERT INTO portfolio_skills (id, name, category, level, visible)
-           VALUES (?, ?, ?, ?, ?)`,
-          [sk.id, sk.name, sk.category, sk.level, sk.visible ? 1 : 0]
+        await connection.query(
+          `INSERT INTO portfolio_skills (id, name, category, level, visible, \`order\`)
+           VALUES (?, ?, ?, ?, ?, ?)`,
+          [sk.id, sk.name, sk.category, sk.level, sk.visible ? 1 : 0, sk.order || 0]
         );
       }
     }
 
     // 7. Certificates Save
     if (dataset.certificateList) {
-      await pool.query("DELETE FROM portfolio_certificates");
+      await connection.query("DELETE FROM portfolio_certificates");
       for (const cert of dataset.certificateList) {
-        await pool.query(
-          `INSERT INTO portfolio_certificates (id, name, issuer, issueDate, credentialUrl, imageUrl, visible)
-           VALUES (?, ?, ?, ?, ?, ?, ?)`,
-          [cert.id, cert.name, cert.issuer, cert.issueDate, cert.credentialUrl, cert.imageUrl, cert.visible ? 1 : 0]
+        await connection.query(
+          "INSERT INTO portfolio_certificates (id, name, issuer, issueDate, credentialUrl, imageUrl, impactProfessionnel, visible, `order`)"
+          + " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          [
+            cert.id,
+            cert.name,
+            cert.issuer,
+            cert.issueDate,
+            cert.credentialUrl,
+            cert.imageUrl,
+            cert.impactProfessionnel || "",
+            cert.visible ? 1 : 0,
+            cert.order || 0,
+          ]
         );
       }
     }
 
     // 8. Testimonials Save
     if (dataset.testimonialList) {
-      await pool.query("DELETE FROM portfolio_testimonials");
+      await connection.query("DELETE FROM portfolio_testimonials");
       for (const test of dataset.testimonialList) {
-        await pool.query(
-          `INSERT INTO portfolio_testimonials (id, name, role, company, feedback, rating, avatarUrl, visible)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-          [test.id, test.name, test.role, test.company, test.feedback, test.rating, test.avatarUrl, test.visible ? 1 : 0]
+        await connection.query(
+          `INSERT INTO portfolio_testimonials (id, name, role, company, feedback, rating, avatarUrl, visible, \`order\`)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [test.id, test.name, test.role, test.company, test.feedback, test.rating, test.avatarUrl, test.visible ? 1 : 0, test.order || 0]
         );
       }
     }
 
+    await connection.commit();
     console.log("✅ Data saved to MySQL database successfully");
     return { success: true, savedTo: "mysql", status: dbStatusMessage };
   } catch (err: any) {
-
+    await connection.rollback();
     console.error("❌ Failed to save to MySQL database:", err);
     throw new Error(`Database save error: ${err.message}`);
+  } finally {
+    connection.release();
   }
 }
 

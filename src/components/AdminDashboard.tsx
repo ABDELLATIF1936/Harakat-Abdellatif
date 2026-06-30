@@ -142,6 +142,10 @@ export default function AdminDashboard({
   // Helper function to generate unique ID
   const generateUUID = () => `id-${Math.random().toString(36).substr(2, 9)}`;
 
+  // Normalize order field values after list reorder or edit
+  const normalizeOrder = <T extends { order?: number }>(items: T[]) =>
+    items.map((item, idx) => ({ ...item, order: idx + 1 }));
+
   // REORDER ITEMS HANDLER (Simulated Drag & Drop via Up-Down buttons)
   const handleMoveItem = (type: AdminTab, index: number, direction: "up" | "down") => {
     const targetIndex = direction === "up" ? index - 1 : index + 1;
@@ -153,7 +157,7 @@ export default function AdminDashboard({
       const temp = copy[index];
       copy[index] = copy[targetIndex];
       copy[targetIndex] = temp;
-      onSetEducationList(copy);
+      onSetEducationList(normalizeOrder(copy));
       showAlert("Ordre mis à jour");
     } else if (type === "exppro") {
       if (targetIndex >= experienceProList.length) return;
@@ -161,7 +165,7 @@ export default function AdminDashboard({
       const temp = copy[index];
       copy[index] = copy[targetIndex];
       copy[targetIndex] = temp;
-      onSetExperienceProList(copy);
+      onSetExperienceProList(normalizeOrder(copy));
       showAlert("Ordre mis à jour");
     } else if (type === "expbenevole") {
       if (targetIndex >= experienceBenevoleList.length) return;
@@ -169,7 +173,7 @@ export default function AdminDashboard({
       const temp = copy[index];
       copy[index] = copy[targetIndex];
       copy[targetIndex] = temp;
-      onSetExperienceBenevoleList(copy);
+      onSetExperienceBenevoleList(normalizeOrder(copy));
       showAlert("Ordre mis à jour");
     } else if (type === "projects") {
       if (targetIndex >= projectList.length) return;
@@ -177,7 +181,7 @@ export default function AdminDashboard({
       const temp = copy[index];
       copy[index] = copy[targetIndex];
       copy[targetIndex] = temp;
-      onSetProjectList(copy);
+      onSetProjectList(normalizeOrder(copy));
       showAlert("Ordre mis à jour");
     } else if (type === "skills") {
       if (targetIndex >= skillList.length) return;
@@ -185,7 +189,7 @@ export default function AdminDashboard({
       const temp = copy[index];
       copy[index] = copy[targetIndex];
       copy[targetIndex] = temp;
-      onSetSkillList(copy);
+      onSetSkillList(normalizeOrder(copy));
       showAlert("Ordre mis à jour");
     } else if (type === "certificates") {
       if (targetIndex >= certificateList.length) return;
@@ -193,7 +197,7 @@ export default function AdminDashboard({
       const temp = copy[index];
       copy[index] = copy[targetIndex];
       copy[targetIndex] = temp;
-      onSetCertificateList(copy);
+      onSetCertificateList(normalizeOrder(copy));
       showAlert("Ordre mis à jour");
     } else if (type === "testimonials") {
       if (targetIndex >= testimonialList.length) return;
@@ -201,7 +205,7 @@ export default function AdminDashboard({
       const temp = copy[index];
       copy[index] = copy[targetIndex];
       copy[targetIndex] = temp;
-      onSetTestimonialList(copy);
+      onSetTestimonialList(normalizeOrder(copy));
       showAlert("Ordre mis à jour");
     }
   };
@@ -353,8 +357,9 @@ export default function AdminDashboard({
           description: tempEducation.description || "",
           grade: tempEducation.grade,
           visible: true,
+          order: 1,
         };
-        onSetEducationList([item, ...educationList]);
+        onSetEducationList(normalizeOrder([item, ...educationList]));
         showAlert("Formation créée avec succès !");
       } else {
         const updated = educationList.map((x) => (x.id === id ? { ...x, ...tempEducation } as Education : x));
@@ -377,8 +382,9 @@ export default function AdminDashboard({
           logoUrl: tempExpPro.logoUrl,
           tags: tempExpPro.tags || [],
           visible: true,
+          order: 1,
         };
-        onSetExperienceProList([item, ...experienceProList]);
+        onSetExperienceProList(normalizeOrder([item, ...experienceProList]));
         showAlert("Expérience Pro ajoutée !");
       } else {
         const updated = experienceProList.map((x) => (x.id === id ? { ...x, ...tempExpPro } as ExperiencePro : x));
@@ -399,8 +405,9 @@ export default function AdminDashboard({
           description: tempExpBenevole.description || "",
           tags: tempExpBenevole.tags || [],
           visible: true,
+          order: 1,
         };
-        onSetExperienceBenevoleList([item, ...experienceBenevoleList]);
+        onSetExperienceBenevoleList(normalizeOrder([item, ...experienceBenevoleList]));
         showAlert("Engagement bénévole ajouté !");
       } else {
         const updated = experienceBenevoleList.map((x) => (x.id === id ? { ...x, ...tempExpBenevole } as ExperienceBenevole : x));
@@ -425,8 +432,9 @@ export default function AdminDashboard({
           tags: tempProject.tags || [],
           challenges: tempProject.challenges || "",
           visible: true,
+          order: 1,
         };
-        onSetProjectList([item, ...projectList]);
+        onSetProjectList(normalizeOrder([item, ...projectList]));
         showAlert("Projet ajouté au portfolio !");
       } else {
         const updated = projectList.map((x) => (x.id === id ? { ...x, ...tempProject } as Project : x));
@@ -445,6 +453,7 @@ export default function AdminDashboard({
           category: tempSkill.category || "languages",
           level: tempSkill.level !== undefined ? tempSkill.level : 80,
           visible: true,
+          order: skillList.length + 1,
         };
         onSetSkillList([item, ...skillList]);
         showAlert("Compétence ajoutée !");
@@ -466,7 +475,9 @@ export default function AdminDashboard({
           issueDate: tempCert.issueDate || "",
           credentialUrl: tempCert.credentialUrl || "",
           imageUrl: tempCert.imageUrl || "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&q=80&w=200&h=200",
+          impactProfessionnel: tempCert.impactProfessionnel || "",
           visible: true,
+          order: certificateList.length + 1,
         };
         onSetCertificateList([item, ...certificateList]);
         showAlert("Certificat ajouté !");
@@ -490,6 +501,7 @@ export default function AdminDashboard({
           rating: tempTestimonial.rating || 5,
           avatarUrl: tempTestimonial.avatarUrl || "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&q=80&w=150&h=150",
           visible: true,
+          order: testimonialList.length + 1,
         };
         onSetTestimonialList([item, ...testimonialList]);
         showAlert("Recommandation ajoutée !");
@@ -2311,6 +2323,16 @@ export default function AdminDashboard({
                       value={tempCert.credentialUrl || ""}
                       onChange={(e) => setTempCert({ ...tempCert, credentialUrl: e.target.value })}
                       className="w-full px-3 py-2 border border-slate-200 dark:border-slate-850 rounded-xl bg-transparent text-sm text-slate-900 dark:text-white"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs font-bold text-slate-405 uppercase">Impact professionnel</label>
+                    <textarea
+                      rows={4}
+                      placeholder="Décrivez l'impact professionnel de cette certification sur vos projets et compétences"
+                      value={tempCert.impactProfessionnel || ""}
+                      onChange={(e) => setTempCert({ ...tempCert, impactProfessionnel: e.target.value })}
+                      className="w-full px-3 py-2 border border-slate-200 dark:border-slate-850 rounded-xl bg-transparent text-sm text-slate-900 dark:text-white resize-none"
                     />
                   </div>
                 </div>

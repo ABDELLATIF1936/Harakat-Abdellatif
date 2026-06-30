@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { motion } from "motion/react";
 import { Award, Calendar, ShieldCheck, ArrowUpRight } from "lucide-react";
 import { Certificate } from "../types";
@@ -8,7 +9,12 @@ interface CertificatesProps {
 }
 
 export default function Certificates({ certificateList, onSelectCertificate }: CertificatesProps) {
-  const visibleCertificates = certificateList.filter((cert) => cert.visible);
+  const [showAllCertificates, setShowAllCertificates] = useState(false);
+  const visibleCertificates = certificateList
+    .filter((cert) => cert.visible)
+    .sort((a, b) => a.order - b.order);
+  const displayedCertificates = showAllCertificates ? visibleCertificates : visibleCertificates.slice(0, 6);
+  const hasMoreCertificates = visibleCertificates.length > 6;
 
   return (
     <section id="certificates" className="py-24 bg-slate-50 dark:bg-slate-950/60 border-t border-slate-100 dark:border-slate-800">
@@ -27,7 +33,7 @@ export default function Certificates({ certificateList, onSelectCertificate }: C
 
         {/* Grid display */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {visibleCertificates.map((cert, idx) => (
+          {displayedCertificates.map((cert, idx) => (
             <motion.div
               key={cert.id}
               initial={{ opacity: 0, y: 30 }}
@@ -83,12 +89,23 @@ export default function Certificates({ certificateList, onSelectCertificate }: C
               </div>
             </motion.div>
           ))}
-          {visibleCertificates.length === 0 && (
+          {displayedCertificates.length === 0 && (
             <div className="col-span-full text-center py-12 text-slate-400">
               Aucun certificat disponible à afficher.
             </div>
           )}
         </div>
+        {hasMoreCertificates && (
+          <div className="mt-10 text-center">
+            <button
+              type="button"
+              onClick={() => setShowAllCertificates((prev) => !prev)}
+              className="inline-flex items-center justify-center px-6 py-3 rounded-full bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-500 transition"
+            >
+              {showAllCertificates ? "Voir moins" : "Voir plus"}
+            </button>
+          </div>
+        )}
 
       </div>
     </section>

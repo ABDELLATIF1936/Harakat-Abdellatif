@@ -10,17 +10,6 @@ import {
   Testimonial,
   ContactMessage,
 } from "./types";
-import {
-  initialProfile,
-  initialEducation,
-  initialExperiencePro,
-  initialExperienceBenevole,
-  initialProjects,
-  initialSkills,
-  initialCertificates,
-  initialTestimonials,
-  initialMessages,
-} from "./data";
 // Components imports
 import Navbar from "./components/Navbar";
 import Hero from "./components/Hero";
@@ -54,16 +43,28 @@ export default function App() {
     return savedTheme === "dark";
   });
 
-  // PERSISTENCE ENGINE (Component state initialized for shape; actual content loaded from MySQL backend on boot)
-  const [profile, setProfile] = useState<Profile>(initialProfile);
-  const [educationList, setEducationList] = useState<Education[]>(initialEducation);
-  const [experienceProList, setExperienceProList] = useState<ExperiencePro[]>(initialExperiencePro);
-  const [experienceBenevoleList, setExperienceBenevoleList] = useState<ExperienceBenevole[]>(initialExperienceBenevole);
-  const [projectList, setProjectList] = useState<Project[]>(initialProjects);
-  const [skillList, setSkillList] = useState<Skill[]>(initialSkills);
-  const [certificateList, setCertificateList] = useState<Certificate[]>(initialCertificates);
-  const [testimonialList, setTestimonialList] = useState<Testimonial[]>(initialTestimonials);
-  const [messageList, setMessageList] = useState<ContactMessage[]>(initialMessages);
+  // PERSISTENCE ENGINE (Component state initialized as empty; actual content loaded from MySQL backend on boot)
+  const [profile, setProfile] = useState<Profile>({
+    name: "",
+    title: "",
+    bio: "",
+    photoUrl: "",
+    cvUrl: "",
+    email: "",
+    phone: "",
+    location: "",
+    status: "",
+    linkedin: "",
+    github: "",
+  });
+  const [educationList, setEducationList] = useState<Education[]>([]);
+  const [experienceProList, setExperienceProList] = useState<ExperiencePro[]>([]);
+  const [experienceBenevoleList, setExperienceBenevoleList] = useState<ExperienceBenevole[]>([]);
+  const [projectList, setProjectList] = useState<Project[]>([]);
+  const [skillList, setSkillList] = useState<Skill[]>([]);
+  const [certificateList, setCertificateList] = useState<Certificate[]>([]);
+  const [testimonialList, setTestimonialList] = useState<Testimonial[]>([]);
+  const [messageList, setMessageList] = useState<ContactMessage[]>([]);
 
   // Connection metadata / Status of the Relational DB
   const [dbStatus, setDbStatus] = useState<string>("Obtention des informations du serveur...");
@@ -405,7 +406,7 @@ export default function App() {
         )}
       </div>
 
-      {currentView === "portfolio" && <ChatAssistant />}
+      {currentView === "portfolio" && <ChatAssistant profileName={profile.name} profileTitle={profile.title} />}
 
       {/* Main Footer layout */}
       <Footer

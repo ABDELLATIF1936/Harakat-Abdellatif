@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { motion } from "motion/react";
 import { Quote, Star } from "lucide-react";
 import { Testimonial } from "../types";
@@ -7,7 +8,10 @@ interface TestimonialsProps {
 }
 
 export default function Testimonials({ testimonialList }: TestimonialsProps) {
+  const [showAllTestimonials, setShowAllTestimonials] = useState(false);
   const visibleTestimonials = testimonialList.filter((test) => test.visible);
+  const displayedTestimonials = showAllTestimonials ? visibleTestimonials : visibleTestimonials.slice(0, 3);
+  const hasMoreTestimonials = visibleTestimonials.length > 3;
 
   return (
     <section id="testimonials" className="py-24 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800">
@@ -26,7 +30,7 @@ export default function Testimonials({ testimonialList }: TestimonialsProps) {
 
         {/* Responsive Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {visibleTestimonials.map((test, idx) => (
+          {displayedTestimonials.map((test, idx) => (
             <motion.div
               key={test.id}
               initial={{ opacity: 0, y: 30 }}
@@ -83,12 +87,23 @@ export default function Testimonials({ testimonialList }: TestimonialsProps) {
               </div>
             </motion.div>
           ))}
-          {visibleTestimonials.length === 0 && (
+          {displayedTestimonials.length === 0 && (
             <div className="col-span-full text-center py-12 text-slate-400">
               Aucun témoignage enregistré pour le moment.
             </div>
           )}
         </div>
+        {hasMoreTestimonials && (
+          <div className="mt-10 text-center">
+            <button
+              type="button"
+              onClick={() => setShowAllTestimonials((prev) => !prev)}
+              className="inline-flex items-center justify-center px-6 py-3 rounded-full bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-500 transition"
+            >
+              {showAllTestimonials ? "Voir moins" : "Voir plus"}
+            </button>
+          </div>
+        )}
 
       </div>
     </section>

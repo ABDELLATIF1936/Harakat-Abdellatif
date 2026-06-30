@@ -1,5 +1,5 @@
-import { useEffect } from "react";
-import { motion } from "motion/react";
+import { useEffect, useState } from "react";
+import { motion, AnimatePresence } from "motion/react";
 import {
   ArrowLeft,
   ExternalLink,
@@ -8,7 +8,8 @@ import {
   ShieldCheck,
   Building,
   CheckCircle,
-  FileText
+  FileText,
+  X
 } from "lucide-react";
 import { Certificate } from "../types";
 
@@ -18,6 +19,8 @@ interface CertificateDetailProps {
 }
 
 export default function CertificateDetail({ certificate, onBack }: CertificateDetailProps) {
+  const [isZoomOpen, setIsZoomOpen] = useState(false);
+
   // Ensure we start at the top of the details page on render
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "instant" });
@@ -73,11 +76,6 @@ export default function CertificateDetail({ certificate, onBack }: CertificateDe
               </div>
             </div>
 
-            <p className="text-sm sm:text-base text-slate-500 dark:text-slate-400 leading-relaxed font-medium">
-              Cette accréditation valide officiellement les compétences techniques et méthodologiques acquises auprès de l'organisme <span className="font-bold text-slate-700 dark:text-slate-300">{certificate.issuer}</span>. Elle garantit l'application rigoureuse des meilleures pratiques du secteur.
-            </p>
-
-            {/* Quick Actions */}
             <div className="flex flex-wrap gap-4 pt-4">
               <a
                 href={certificate.credentialUrl}
@@ -102,14 +100,27 @@ export default function CertificateDetail({ certificate, onBack }: CertificateDe
             <div className="absolute -inset-1 rounded-3xl bg-indigo-500/10 dark:bg-indigo-500/15 blur-xl pointer-events-none" />
             
             <div className="relative rounded-3xl overflow-hidden bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800 shadow-xl aspect-[4/3] w-full flex items-center justify-center p-4">
+              <button
+                type="button"
+                onClick={() => setIsZoomOpen(true)}
+                className="absolute inset-0 z-10"
+                aria-label="Agrandir l'image du certificat"
+              />
               <div className="w-full h-full relative rounded-2xl overflow-hidden bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 p-2">
                 <img
                   src={certificate.imageUrl}
                   alt={certificate.name}
                   referrerPolicy="no-referrer"
-                  className="w-full h-full object-contain"
+                  className="w-full h-full object-contain cursor-zoom-in"
                 />
               </div>
+              <button
+                type="button"
+                onClick={() => setIsZoomOpen(true)}
+                className="absolute right-4 top-4 inline-flex items-center gap-2 px-3 py-2 rounded-full bg-white/90 text-slate-700 dark:bg-slate-900/90 dark:text-slate-100 border border-slate-200 dark:border-slate-800 shadow-sm hover:bg-slate-100 transition"
+              >
+                Agrandir
+              </button>
             </div>
           </motion.div>
 
@@ -162,11 +173,45 @@ export default function CertificateDetail({ certificate, onBack }: CertificateDe
               Impact professionnel
             </h3>
             <p className="text-slate-500 dark:text-slate-400 text-xs sm:text-sm font-semibold leading-relaxed pt-2">
-              Cette formation accréditée élargit mon expertise technique opérationnelle. Elle assure à nos clients et partenaires académiques les plus hauts standards de fiabilité, de sécurité et d'innovation dans les livrables applicatifs ainsi que dans les activités de recherche.
+              {certificate.impactProfessionnel || "Aucun impact professionnel renseigné pour ce certificat."}
             </p>
           </motion.div>
 
         </div>
+
+        <AnimatePresence>
+          {isZoomOpen && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4"
+            >
+              <motion.div
+                initial={{ scale: 0.95, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.95, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="relative w-full max-w-5xl rounded-3xl overflow-hidden bg-slate-900 shadow-2xl border border-slate-700"
+              >
+                <button
+                  type="button"
+                  onClick={() => setIsZoomOpen(false)}
+                  className="absolute right-4 top-4 z-20 inline-flex items-center justify-center rounded-full bg-slate-950/90 text-slate-100 p-2 shadow-lg hover:bg-slate-900"
+                  aria-label="Fermer l'aperçu"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+                <img
+                  src={certificate.imageUrl}
+                  alt={certificate.name}
+                  referrerPolicy="no-referrer"
+                  className="w-full h-[calc(100vh-6rem)] object-contain bg-slate-950"
+                />
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Bottom Back navigation line */}
         <motion.div

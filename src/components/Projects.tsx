@@ -10,6 +10,7 @@ interface ProjectsProps {
 
 export default function Projects({ projectList, onSelectProject }: ProjectsProps) {
   const [activeCategory, setActiveCategory] = useState<string>("Tous");
+  const [showAllProjects, setShowAllProjects] = useState(false);
 
   const getProjectCategory = (project: Project): string => {
     const text = (project.title + " " + project.description + " " + project.tags.join(" ")).toLowerCase();
@@ -36,7 +37,10 @@ export default function Projects({ projectList, onSelectProject }: ProjectsProps
 
   const visibleProjects = projectList
     .filter((proj) => proj.visible)
+    .sort((a, b) => a.order - b.order)
     .filter((proj) => activeCategory === "Tous" || getProjectCategory(proj) === activeCategory);
+  const displayedProjects = showAllProjects ? visibleProjects : visibleProjects.slice(0, 6);
+  const hasMoreProjects = visibleProjects.length > 6;
 
   return (
     <section id="projects" className="py-24 bg-slate-50 dark:bg-slate-950/60 border-t border-slate-100 dark:border-slate-800">
@@ -60,7 +64,10 @@ export default function Projects({ projectList, onSelectProject }: ProjectsProps
             return (
               <button
                 key={cat}
-                onClick={() => setActiveCategory(cat)}
+                onClick={() => {
+                  setActiveCategory(cat);
+                  setShowAllProjects(false);
+                }}
                 className={`px-4.5 py-2 rounded-full text-xs font-bold tracking-normal transition duration-300 cursor-pointer ${
                   isActive
                     ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/10"
@@ -75,7 +82,7 @@ export default function Projects({ projectList, onSelectProject }: ProjectsProps
 
         {/* Projects Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {visibleProjects.map((project, idx) => (
+          {displayedProjects.map((project, idx) => (
             <motion.div
               key={project.id}
               initial={{ opacity: 0, y: 30 }}
@@ -162,13 +169,23 @@ export default function Projects({ projectList, onSelectProject }: ProjectsProps
               </div>
             </motion.div>
           ))}
-          {visibleProjects.length === 0 && (
+          {displayedProjects.length === 0 && (
             <div className="col-span-full text-center py-12 text-slate-400">
               Aucun projet disponible à afficher pour l'instant.
             </div>
           )}
         </div>
-
+        {hasMoreProjects && (
+          <div className="mt-10 text-center">
+            <button
+              type="button"
+              onClick={() => setShowAllProjects((prev) => !prev)}
+              className="inline-flex items-center justify-center px-6 py-3 rounded-full bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-500 transition"
+            >
+              {showAllProjects ? "Voir moins" : "Voir plus"}
+            </button>
+          </div>
+        )}
       </div>
     </section>
   );

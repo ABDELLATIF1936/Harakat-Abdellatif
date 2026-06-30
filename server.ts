@@ -32,9 +32,17 @@ async function startServer() {
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
   // Initialize Gemini API client on the server securely
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = process.env.GEMINI_API_KEY || "";
+  const apiKeyEnvName = "GEMINI_API_KEY";
+
+  if (apiKey) {
+    console.log(`Gemini API key loaded from ${apiKeyEnvName}`);
+  } else {
+    console.error("Gemini API Error on server: missing GEMINI_API_KEY.");
+  }
+
   const ai = new GoogleGenAI({
-    apiKey: apiKey || "",
+    apiKey: apiKey,
     httpOptions: {
       headers: {
         "User-Agent": "aistudio-build",
@@ -46,11 +54,28 @@ async function startServer() {
   app.post("/api/chat", async (req, res) => {
     try {
       const { messages } = req.body;
+      const portfolioData = await getPortfolioData();
+      const profile = portfolioData.profile || {
+        name: "l'auteur du site",
+        title: "",
+        bio: "",
+        location: "",
+        email: "",
+        phone: "",
+        linkedin: "",
+        github: "",
+      };
 
       if (!apiKey) {
         return res.status(500).json({
-          error: "La clé API Gemini (GEMINI_API_KEY) n'est pas configurée dans les variables d'environnement.",
+          error: "La clé API Gemini n'est pas configurée. Veuillez définir GEMINI_API_KEY dans .env.local.",
         });
+      }
+
+      if (apiKey.startsWith("AIza")) {
+        console.warn(
+          "La clé API Gemini semble incorrecte : une clé 'AIza...' est détectée. Utilisez une clé Gemini valide pour le service generativelanguage.googleapis.com."
+        );
       }
 
       if (!messages || !Array.isArray(messages)) {
@@ -63,48 +88,27 @@ async function startServer() {
         parts: [{ text: m.content }],
       }));
 
-      const systemInstruction = `Tu es l'assistant IA virtuel et le "double numérique" d'Alexandre Mercier. Ton rôle est de renseigner chaleureusement et professionnellement les recruteurs, étudiants et visiteurs de son site Portfolio.
+      const systemInstruction = `Tu es l'assistant IA virtuel du portfolio de ${profile.name || "l'auteur du site"}. Ton rôle est de renseigner chaleureusement et professionnellement les recruteurs, étudiants et visiteurs de son site Portfolio.
 
-Voici les informations réelles et certifiées sur Alexandre Mercier :
+Voici les informations disponibles pour ce portfolio :
 
 [Profil]
-Nom : Alexandre Mercier
-Titre : Étudiant en Master 2 Informatique | Développeur Full-Stack & DevOps
-Bio : Passionné par le développement d'applications web scalables, l'intelligence artificielle et l'automatisation des infrastructures (DevOps). Il combine des compétences concrètes en React/Next.js, Node.js et Python avec une solide culture de l'ingénierie et de l'intégration continue.
-Localisation : Paris, France
-Email : alexandre.mercier.contact@gmail.com
-Téléphone : +33 6 12 34 56 78
-LinkedIn : https://linkedin.com/in/alexandre-mercier-demo
-GitHub : https://github.com/alexandre-mercier-demo
+Nom : ${profile.name || "—"}
+Titre : ${profile.title || "—"}
+Bio : ${profile.bio || "—"}
+Localisation : ${profile.location || "—"}
+Email : ${profile.email || "—"}
+Téléphone : ${profile.phone || "—"}
+LinkedIn : ${profile.linkedin || "—"}
+GitHub : ${profile.github || "—"}
 
-[Études]
-- Master 2 Informatique (Spécialisation Génie Logiciel & IA) à l'Université Paris-Saclay (2024 - Présent) - Mention Très Bien, majorant de promotion (en cours). Projet de recherche sur l'optimisation des requêtes LLM.
-- Licence d'Informatique à l'Université Paris-Sud (2021 - 2024) - Mention Bien.
-- Baccalauréat Général (Mathématiques & NSI) au Lycée Jeanne d'Arc (2018 - 2021) - Mention Très Bien.
-
-[Expériences Professionnelles]
-- Criteo : Stagiaire Développeur Full-Stack & DevOps (Avril - Septembre 2025 à Paris). Il a conçu un dashboard de télémétrie interne boosté par Grafana/Prometheus et accéléré le pipeline CI/CD GitLab de 35% grâce à des processus de cache avancés.
-- RTP Technologies : Développeur Web Freelance / Junior (Octobre 2023 - Juin 2024). Création d'une application de gestion de stocks complète pour un artisan d'art local via Next.js et PostgreSQL.
-
-[Expériences Associatives & Bénévolat]
-- Saclay d'Code (Junior Entreprise) : Responsable Technique & Développeur Web (Septembre 2024 - Présent). Lead d'une équipe de 8 développeurs, refonte de la plateforme interne d'inscription et animation de talks React.
-- Emmaüs Connect : Bénévole Aidant Numérique (Janvier 2022 - Juin 2023). Accompagnement de personnes en situation d'exclusion numérique.
-
-[Projets phares]
-1. NeuroInsight (Analyse Trame IRM par IA) : React, FastAPI, Python, PyTorch, Docker, Celery/Redis. Analyse automatisée d'images médicales cérébrales avec cartographie de zones à risques pour assister les radiologues.
-2. ArchiVault (Gestion Documentaire Chiffrée) : Next.js, Node.js, Web Crypto API, PostgreSQL. SaaS d'archivage sécurisé avec chiffrement de bout en bout RSA/AES côté client.
-3. EcoDeploy (Orchestrateur K8s éco-conçu) : Go, Kubernetes, Prometheus. Adapte l'échelle des ressources d'un cluster Kubernetes selon l'intensité carbone temps réel obtenue par les API Electricity Maps.
-
-[Certifications]
-- Architecting on AWS (Associate Level) - Février 2025
-- Google Cloud Certified - Associate Cloud Engineer - Octobre 2024
-- Machine Learning Masterclass d'Andrew Ng (Coursera) - Juillet 2023
+Tu peux parler des sections suivantes : éducation, expérience professionnelle, expérience bénévole, projets, compétences, certifications, témoignages et contact.
 
 Directives de conversation :
 1. Reste poli, bienveillant, clair, synthétique, professionnel et enthousiaste.
 2. Réponds en français (ou dans la langue de l'interlocuteur s'il écrit en anglais, espagnol, etc.).
 3. Ne propose JAMAIS d'informations non documentées ici (ne pas inventer d'autres postes ou compétences).
-4. Si un visiteur veut le contacter, donne-lui son email (alexandre.mercier.contact@gmail.com) ou invite-le à utiliser le formulaire de contact interactif au bas du site.
+4. Si un visiteur veut le contacter, donne-lui son email ou invite-le à utiliser le formulaire de contact interactif au bas du site.
 5. Garde tes réponses relativement concises et adaptées au format de chat.`;
 
       // Request to Gemini API using modern SDK approach

@@ -9,16 +9,36 @@ interface Message {
   timestamp: Date;
 }
 
-export default function ChatAssistant() {
+interface ChatAssistantProps {
+  profileName?: string;
+  profileTitle?: string;
+}
+
+export default function ChatAssistant({ profileName, profileTitle }: ChatAssistantProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const authorName = profileName || "l'auteur du portfolio";
+  const authorLabel = profileTitle ? `${authorName} (${profileTitle})` : authorName;
+
+  const welcomePrompt = `Bonjour ! Je suis l'assistant IA de ${authorLabel}. Je connais son parcours académique, ses projets, ses certifications et ses expériences. Comment puis-je vous aider aujourd'hui ?`;
+
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "welcome",
       role: "assistant",
-      content: "Bonjour ! Je suis l'assistant IA d'Alexandre. Je connais tout son parcours académique, ses projets (NeuroInsight, ArchiVault, EcoDeploy), ses certifications (AWS, GCP) et ses expériences chez Criteo. Comment puis-je vous aider aujourd'hui ?",
+      content: welcomePrompt,
       timestamp: new Date(),
     },
   ]);
+
+  useEffect(() => {
+    setMessages((prev) =>
+      prev.map((m) =>
+        m.id === "welcome" && m.role === "assistant"
+          ? { ...m, content: welcomePrompt }
+          : m
+      )
+    );
+  }, [welcomePrompt]);
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [hasError, setHasError] = useState(false);
@@ -26,7 +46,7 @@ export default function ChatAssistant() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const suggestedQuestions = [
-    "Quel est le parcours d'Alexandre ?",
+    "Quel est le parcours de HARAKAT ?",
     "Quels sont ses projets principaux ?",
     "Quelles sont ses compétences ?",
     "Comment le contacter ?",
@@ -127,7 +147,7 @@ export default function ChatAssistant() {
                     Assistant Virtuel IA
                   </h3>
                   <p className="text-[10px] font-mono tracking-wider text-indigo-400/90 leading-none mt-0.5 uppercase">
-                    Double numérique d'Alexandre
+                    Double numérique de {authorLabel}
                   </p>
                 </div>
               </div>
