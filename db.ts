@@ -52,6 +52,7 @@ if (!mysqlHost || !mysqlUser || !mysqlDatabase) {
 }
 
 const mysqlMaxAllowedPacket = process.env.MYSQL_MAX_ALLOWED_PACKET ? parseInt(process.env.MYSQL_MAX_ALLOWED_PACKET, 10) : 64 * 1024 * 1024;
+let mysqlPacketConfigSupported = true;
 
 async function configureMySQLPacketSize() {
   if (!pool) return;
@@ -85,7 +86,13 @@ async function configureMySQLPacketSize() {
     await logCurrentValue("SESSION");
     console.log(`✅ MySQL max_allowed_packet configuration applied (session request ${mysqlMaxAllowedPacket})`);
   } catch (err: any) {
-    console.warn("⚠️ Could not set MySQL max_allowed_packet:", err.message || err);
+    const message = err.message || err;
+    if (String(message).includes("read-only")) {
+      mysqlPacketConfigSupported = false;
+      console.warn("⚠️ MySQL session max_allowed_packet is read-only on this server. Skipping per-connection session configuration.", message);
+    } else {
+      console.warn("⚠️ Could not set MySQL max_allowed_packet:", message);
+    }
   }
 }
 
@@ -102,14 +109,14 @@ try {
   });
 
   pool.on("connection", (connection: mysql.PoolConnection) => {
+    if (!mysqlPacketConfigSupported) {
+      return;
+    }
+
     connection.promise().query(`SET SESSION max_allowed_packet = ${mysqlMaxAllowedPacket}`).catch((err: any) => {
       console.warn("⚠️ Unable to set session max_allowed_packet on new connection:", err.message || err);
+      mysqlPacketConfigSupported = false;
     });
-    if (process.env.MYSQL_SET_GLOBAL_MAX_ALLOWED_PACKET === "true") {
-      connection.promise().query(`SET GLOBAL max_allowed_packet = ${mysqlMaxAllowedPacket}`).catch((innerErr: any) => {
-        console.warn("⚠️ Unable to set GLOBAL max_allowed_packet on new connection:", innerErr.message || innerErr);
-      });
-    }
   });
 
   isUsingMySQL = true;
