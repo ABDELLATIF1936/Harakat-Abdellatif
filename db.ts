@@ -3,16 +3,16 @@ import mysql from "mysql2/promise";
 import fs from "fs";
 import path from "path";
 
-dotenv.config({ path: path.resolve(process.cwd(), ".env.local") });
+dotenv.config({ path: path.resolve(process.cwd(), ".env") });
 
 // Cleanup: Remove legacy local database file
 const LOCAL_DB_PATH = path.join(process.cwd(), "db_local.json");
 if (fs.existsSync(LOCAL_DB_PATH)) {
   try {
     fs.unlinkSync(LOCAL_DB_PATH);
-    console.log("🗑️  Removed legacy db_local.json (MySQL only mode enabled)");
+    console.log("  Removed legacy db_local.json (MySQL only mode enabled)");
   } catch (err) {
-    console.warn("⚠️  Could not remove db_local.json:", err);
+    console.warn("  Could not remove db_local.json:", err);
   }
 }
 
