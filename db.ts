@@ -3,19 +3,6 @@ import mysql from "mysql2/promise";
 import fs from "fs";
 import path from "path";
 
-dotenv.config({ path: path.resolve(process.cwd(), ".env") });
-
-// Cleanup: Remove legacy local database file
-const LOCAL_DB_PATH = path.join(process.cwd(), "db_local.json");
-if (fs.existsSync(LOCAL_DB_PATH)) {
-  try {
-    fs.unlinkSync(LOCAL_DB_PATH);
-    console.log("  Removed legacy db_local.json (MySQL only mode enabled)");
-  } catch (err) {
-    console.warn("  Could not remove db_local.json:", err);
-  }
-}
-
 import {
   Profile,
   Education,
@@ -32,116 +19,157 @@ import {
 let pool: mysql.Pool | null = null;
 let isUsingMySQL = false;
 let dbStatusMessage = "Non initialisé";
+let initializationAttempted = false;
 
 // Export for API status endpoint
 export function getDBStatus() {
   return { isUsingMySQL, message: dbStatusMessage };
 }
 
-// Test credentials and initialize pool
-const mysqlHost = process.env.MYSQL_HOST;
-const mysqlUser = process.env.MYSQL_USER;
-const mysqlPassword = process.env.MYSQL_PASSWORD;
-const mysqlDatabase = process.env.MYSQL_DATABASE;
-const mysqlPort = process.env.MYSQL_PORT ? parseInt(process.env.MYSQL_PORT, 10) : 3306;
-
-if (!mysqlHost || !mysqlUser || !mysqlDatabase) {
-  console.error("❌ CRITICAL: MySQL credentials are REQUIRED in .env.local");
-  console.error("Please set: MYSQL_HOST, MYSQL_USER, MYSQL_DATABASE");
-  throw new Error("MySQL database configuration is mandatory. Please configure .env.local with MySQL credentials.");
-}
-
-const mysqlMaxAllowedPacket = process.env.MYSQL_MAX_ALLOWED_PACKET ? parseInt(process.env.MYSQL_MAX_ALLOWED_PACKET, 10) : 64 * 1024 * 1024;
-let mysqlPacketConfigSupported = true;
-
-async function configureMySQLPacketSize() {
-  if (!pool) return;
-
-  const logCurrentValue = async (label: string) => {
-    try {
-      const [rows] = await pool!.query(`SHOW ${label} VARIABLES LIKE 'max_allowed_packet'`);
-      const result = (rows as any[])[0];
-      if (result) {
-        console.log(`ℹ️ MySQL ${label} max_allowed_packet: ${result.Value}`);
-      }
-    } catch (err: any) {
-      console.warn(`⚠️ Unable to read MySQL ${label} max_allowed_packet:`, err.message || err);
+/**
+ * Lazy initialization: ensures MySQL pool and env are configured.
+ * Safe to call multiple times; only initializes once.
+ */
+async function ensureInitialized(): Promise<void> {
+  if (initializationAttempted) {
+    if (!pool || !isUsingMySQL) {
+      throw new Error("❌ MySQL pool is not available. Check your environment variables.");
     }
-  };
+    return;
+  }
+  initializationAttempted = true;
 
-  await logCurrentValue("GLOBAL");
-  await logCurrentValue("SESSION");
-
+  // Gracefully load .env file (might not exist on Vercel)
   try {
-    await pool.query(`SET SESSION max_allowed_packet = ${mysqlMaxAllowedPacket}`);
-    if (process.env.MYSQL_SET_GLOBAL_MAX_ALLOWED_PACKET === "true") {
-      try {
-        await pool.query(`SET GLOBAL max_allowed_packet = ${mysqlMaxAllowedPacket}`);
-      } catch (innerErr: any) {
-        console.warn("⚠️ Unable to set GLOBAL max_allowed_packet; insufficient privileges.", innerErr.message || innerErr);
-      }
+    const envPath = path.resolve(process.cwd(), ".env");
+    if (fs.existsSync(envPath)) {
+      dotenv.config({ path: envPath });
     }
+  } catch (err) {
+    console.warn("⚠️ Could not load .env file (expected on Vercel):", err);
+  }
+
+  // Cleanup: Remove legacy local database file
+  try {
+    const LOCAL_DB_PATH = path.join(process.cwd(), "db_local.json");
+    if (fs.existsSync(LOCAL_DB_PATH)) {
+      fs.unlinkSync(LOCAL_DB_PATH);
+      console.log("  Removed legacy db_local.json (MySQL only mode enabled)");
+    }
+  } catch (err) {
+    console.warn("  Could not remove db_local.json:", err);
+  }
+
+  // Read credentials from environment (Vercel env vars or .env)
+  const mysqlHost = process.env.MYSQL_HOST;
+  const mysqlUser = process.env.MYSQL_USER;
+  const mysqlPassword = process.env.MYSQL_PASSWORD || "";
+  const mysqlDatabase = process.env.MYSQL_DATABASE;
+  const mysqlPort = process.env.MYSQL_PORT ? parseInt(process.env.MYSQL_PORT, 10) : 3306;
+
+  if (!mysqlHost || !mysqlUser || !mysqlDatabase) {
+    const msg = "❌ MySQL credentials are REQUIRED. Set MYSQL_HOST, MYSQL_USER, MYSQL_DATABASE in your environment.";
+    console.error(msg);
+    dbStatusMessage = msg;
+    throw new Error(msg);
+  }
+
+  const mysqlMaxAllowedPacket = process.env.MYSQL_MAX_ALLOWED_PACKET
+    ? parseInt(process.env.MYSQL_MAX_ALLOWED_PACKET, 10)
+    : 64 * 1024 * 1024;
+  let mysqlPacketConfigSupported = true;
+
+  async function configureMySQLPacketSize() {
+    if (!pool) return;
+
+    const logCurrentValue = async (label: string) => {
+      try {
+        const [rows] = await pool!.query(`SHOW ${label} VARIABLES LIKE 'max_allowed_packet'`);
+        const result = (rows as any[])[0];
+        if (result) {
+          console.log(`ℹ️ MySQL ${label} max_allowed_packet: ${result.Value}`);
+        }
+      } catch (err: any) {
+        console.warn(`⚠️ Unable to read MySQL ${label} max_allowed_packet:`, err.message || err);
+      }
+    };
 
     await logCurrentValue("GLOBAL");
     await logCurrentValue("SESSION");
-    console.log(`✅ MySQL max_allowed_packet configuration applied (session request ${mysqlMaxAllowedPacket})`);
-  } catch (err: any) {
-    const message = err.message || err;
-    if (String(message).includes("read-only")) {
-      mysqlPacketConfigSupported = false;
-      console.warn("⚠️ MySQL session max_allowed_packet is read-only on this server. Skipping per-connection session configuration.", message);
-    } else {
-      console.warn("⚠️ Could not set MySQL max_allowed_packet:", message);
+
+    try {
+      await pool.query(`SET SESSION max_allowed_packet = ${mysqlMaxAllowedPacket}`);
+      if (process.env.MYSQL_SET_GLOBAL_MAX_ALLOWED_PACKET === "true") {
+        try {
+          await pool.query(`SET GLOBAL max_allowed_packet = ${mysqlMaxAllowedPacket}`);
+        } catch (innerErr: any) {
+          console.warn("⚠️ Unable to set GLOBAL max_allowed_packet; insufficient privileges.", innerErr.message || innerErr);
+        }
+      }
+
+      await logCurrentValue("GLOBAL");
+      await logCurrentValue("SESSION");
+      console.log(`✅ MySQL max_allowed_packet configuration applied (session request ${mysqlMaxAllowedPacket})`);
+    } catch (err: any) {
+      const message = err.message || err;
+      if (String(message).includes("read-only")) {
+        mysqlPacketConfigSupported = false;
+        console.warn("⚠️ MySQL session max_allowed_packet is read-only on this server. Skipping per-connection session configuration.", message);
+      } else {
+        console.warn("⚠️ Could not set MySQL max_allowed_packet:", message);
+      }
     }
   }
-}
 
-try {
-  pool = mysql.createPool({
-    host: mysqlHost,
-    user: mysqlUser,
-    password: mysqlPassword,
-    database: mysqlDatabase,
-    port: mysqlPort,
-    waitForConnections: true,
-    connectionLimit: 10,
-    queueLimit: 0,
-  });
-
-  pool.on("connection", (connection: mysql.PoolConnection) => {
-    if (!mysqlPacketConfigSupported) {
-      return;
-    }
-
-    connection.promise().query(`SET SESSION max_allowed_packet = ${mysqlMaxAllowedPacket}`).catch((err: any) => {
-      console.warn("⚠️ Unable to set session max_allowed_packet on new connection:", err.message || err);
-      mysqlPacketConfigSupported = false;
+  try {
+    pool = mysql.createPool({
+      host: mysqlHost,
+      user: mysqlUser,
+      password: mysqlPassword,
+      database: mysqlDatabase,
+      port: mysqlPort,
+      waitForConnections: true,
+      connectionLimit: 10,
+      queueLimit: 0,
     });
-  });
 
-  isUsingMySQL = true;
-  dbStatusMessage = `Connecté à MySQL (${mysqlHost}:${mysqlPort}, bd: ${mysqlDatabase})`;
-  console.log("✅ MySQL pool initialized successfully");
-} catch (err: any) {
-  console.error("❌ CRITICAL: Failed to initialize MySQL pool:", err);
-  throw new Error(`MySQL connection failed: ${err.message}`);
+    pool.on("connection", (connection: mysql.PoolConnection) => {
+      if (!mysqlPacketConfigSupported) {
+        return;
+      }
+
+      (connection as any).query(`SET SESSION max_allowed_packet = ${mysqlMaxAllowedPacket}`).catch((err: any) => {
+        console.warn("⚠️ Unable to set session max_allowed_packet on new connection:", err.message || err);
+        mysqlPacketConfigSupported = false;
+      });
+    });
+
+    isUsingMySQL = true;
+    dbStatusMessage = `Connecté à MySQL (${mysqlHost}:${mysqlPort}, bd: ${mysqlDatabase})`;
+    console.log("✅ MySQL pool initialized successfully");
+  } catch (err: any) {
+    console.error("❌ CRITICAL: Failed to initialize MySQL pool:", err);
+    dbStatusMessage = `Échec de connexion MySQL: ${err.message}`;
+    throw new Error(`MySQL connection failed: ${err.message}`);
+  }
 }
 
 // Set up MySQL schema tables (REQUIRED)
 export async function initializeDatabase() {
+  await ensureInitialized();
   if (!pool || !isUsingMySQL) {
     throw new Error("❌ MySQL pool is not initialized. Cannot proceed.");
   }
 
   try {
-    await configureMySQLPacketSize();
+    // configureMySQLPacketSize is already called within ensureInitialized
     console.log("📋 Creating/verifying MySQL database tables...");
 
     // Helper to add missing columns without relying on MySQL 8+ syntax
     async function ensureProfileColumn(columnName: string, definition: string) {
       const [existingColumns] = await pool!.query(
         `SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND COLUMN_NAME = ?`,
-        [mysqlDatabase, "portfolio_profile", columnName]
+        [process.env.MYSQL_DATABASE, "portfolio_profile", columnName]
       ) as any[];
       if (existingColumns.length === 0) {
         await pool!.query(`ALTER TABLE portfolio_profile ADD COLUMN ${columnName} ${definition};`);
@@ -257,7 +285,9 @@ export async function initializeDatabase() {
         issuer VARCHAR(255),
         issueDate VARCHAR(100),
         credentialUrl VARCHAR(255),
-        imageUrl LONGTEXT,        impactProfessionnel LONGTEXT,        visible TINYINT(1) DEFAULT 1,
+        imageUrl LONGTEXT,
+        impactProfessionnel LONGTEXT,
+        visible TINYINT(1) DEFAULT 1,
         \`order\` INT DEFAULT 0
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     `);
@@ -306,7 +336,7 @@ export async function initializeDatabase() {
       try {
         const [columns] = await pool.query(
           `SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND COLUMN_NAME = 'order'`,
-          [mysqlDatabase, tableName]
+          [process.env.MYSQL_DATABASE, tableName]
         ) as any[];
         
         if (columns.length === 0) {
@@ -319,7 +349,7 @@ export async function initializeDatabase() {
     try {
       const [certColumns] = await pool.query(
         `SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'portfolio_certificates' AND COLUMN_NAME = 'impactProfessionnel'`,
-        [mysqlDatabase]
+        [process.env.MYSQL_DATABASE]
       ) as any[];
       if (certColumns.length === 0) {
         await pool.query(`ALTER TABLE portfolio_certificates ADD COLUMN impactProfessionnel LONGTEXT`);
@@ -337,6 +367,7 @@ export async function initializeDatabase() {
 
 // EXPORTED DATA CONTROLLER - MySQL ONLY
 export async function getPortfolioData() {
+  await ensureInitialized();
   if (!pool || !isUsingMySQL) {
     throw new Error("❌ MySQL pool is not available");
   }
@@ -527,6 +558,7 @@ export async function savePortfolioData(dataset: {
   certificateList?: Certificate[];
   testimonialList?: Testimonial[];
 }) {
+  await ensureInitialized();
   if (!pool || !isUsingMySQL) {
     throw new Error("❌ MySQL pool is not available");
   }
@@ -670,6 +702,7 @@ export async function savePortfolioData(dataset: {
 
 // MESSAGES API CONTROLLERS - MySQL ONLY
 export async function getContactMessages() {
+  await ensureInitialized();
   if (!pool || !isUsingMySQL) {
     throw new Error("❌ MySQL pool is not available");
   }
@@ -693,6 +726,7 @@ export async function getContactMessages() {
 }
 
 export async function saveContactMessages(messages: ContactMessage[]) {
+  await ensureInitialized();
   if (!pool || !isUsingMySQL) {
     throw new Error("❌ MySQL pool is not available");
   }
@@ -709,7 +743,3 @@ export async function saveContactMessages(messages: ContactMessage[]) {
     console.log("✅ Messages saved to MySQL");
     return { success: true };
   } catch (err: any) {
-    console.error("❌ Failed to save messages to MySQL:", err);
-    throw new Error(`Failed to save messages: ${err.message}`);
-  }
-}
