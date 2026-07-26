@@ -29,6 +29,7 @@ export function getDBStatus() {
 /**
  * Lazy initialization: ensures MySQL pool and env are configured.
  * Safe to call multiple times; only initializes once.
+ * On Vercel serverless, this also auto-creates database tables.
  */
 async function ensureInitialized(): Promise<void> {
   if (initializationAttempted) {
@@ -147,6 +148,16 @@ async function ensureInitialized(): Promise<void> {
     isUsingMySQL = true;
     dbStatusMessage = `Connecté à MySQL (${mysqlHost}:${mysqlPort}, bd: ${mysqlDatabase})`;
     console.log("✅ MySQL pool initialized successfully");
+
+    // Auto-create tables in serverless environments (Vercel)
+    // This ensures tables exist before any data operation
+    try {
+      console.log("📋 Auto-creating/verifying MySQL database tables...");
+      await createDatabaseTables();
+      console.log("✅ Database tables ready.");
+    } catch (tableErr: any) {
+      console.warn("⚠️ Table auto-creation warning:", tableErr.message);
+    }
   } catch (err: any) {
     console.error("❌ CRITICAL: Failed to initialize MySQL pool:", err);
     dbStatusMessage = `Échec de connexion MySQL: ${err.message}`;
@@ -154,215 +165,216 @@ async function ensureInitialized(): Promise<void> {
   }
 }
 
-// Set up MySQL schema tables (REQUIRED)
+// Set up MySQL schema tables extracted as separate function
+async function createDatabaseTables() {
+  if (!pool || !isUsingMySQL || !process.env.MYSQL_DATABASE) {
+    throw new Error("❌ MySQL pool is not initialized. Cannot proceed.");
+  }
+
+  // Helper to add missing columns without relying on MySQL 8+ syntax
+  async function ensureProfileColumn(columnName: string, definition: string) {
+    const [existingColumns] = await pool!.query(
+      `SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND COLUMN_NAME = ?`,
+      [process.env.MYSQL_DATABASE, "portfolio_profile", columnName]
+    ) as any[];
+    if (existingColumns.length === 0) {
+      await pool!.query(`ALTER TABLE portfolio_profile ADD COLUMN ${columnName} ${definition};`);
+    }
+  }
+
+  // Create Profile Table
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS portfolio_profile (
+      id VARCHAR(50) PRIMARY KEY,
+      name VARCHAR(255) NOT NULL,
+      title VARCHAR(255),
+      bio TEXT,
+      photoUrl LONGTEXT,
+      cvUrl LONGTEXT,
+      email VARCHAR(255),
+      phone VARCHAR(255),
+      location VARCHAR(255),
+      status VARCHAR(255),
+      github VARCHAR(255),
+      linkedin VARCHAR(255)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  `);
+
+  // Ensure schema can store full profile PDFs and the status field for older installs
+  await ensureProfileColumn("photoUrl", "LONGTEXT NULL");
+  await ensureProfileColumn("cvUrl", "LONGTEXT NULL");
+  await ensureProfileColumn("status", "VARCHAR(255) DEFAULT NULL");
+  await pool.query(`ALTER TABLE portfolio_profile MODIFY COLUMN photoUrl LONGTEXT NULL;`);
+  await pool.query(`ALTER TABLE portfolio_profile MODIFY COLUMN cvUrl LONGTEXT NULL;`);
+
+  // Create Education Table
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS portfolio_education (
+      id VARCHAR(50) PRIMARY KEY,
+      school VARCHAR(255) NOT NULL,
+      degree VARCHAR(255),
+      period VARCHAR(100),
+      location VARCHAR(255),
+      description TEXT,
+      grade VARCHAR(255),
+      visible TINYINT(1) DEFAULT 1,
+      \`order\` INT DEFAULT 0
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  `);
+
+  // Create Experience Pro Table
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS portfolio_experience_pro (
+      id VARCHAR(50) PRIMARY KEY,
+      company VARCHAR(255) NOT NULL,
+      role VARCHAR(255),
+      period VARCHAR(100),
+      location VARCHAR(255),
+      description TEXT,
+      logoUrl LONGTEXT,
+      tags TEXT,
+      visible TINYINT(1) DEFAULT 1,
+      \`order\` INT DEFAULT 0
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  `);
+
+  // Create Experience Benevole Table
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS portfolio_experience_benevole (
+      id VARCHAR(50) PRIMARY KEY,
+      organization VARCHAR(255) NOT NULL,
+      role VARCHAR(255),
+      period VARCHAR(100),
+      location VARCHAR(255),
+      description TEXT,
+      tags TEXT,
+      visible TINYINT(1) DEFAULT 1,
+      \`order\` INT DEFAULT 0
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  `);
+
+  // Create Projects Table
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS portfolio_projects (
+      id VARCHAR(50) PRIMARY KEY,
+      title VARCHAR(255) NOT NULL,
+      description TEXT,
+      longDescription TEXT,
+      imageUrl LONGTEXT,
+      imageUrls LONGTEXT,
+      githubUrl VARCHAR(255),
+      demoUrl VARCHAR(255),
+      tags TEXT,
+      challenges TEXT,
+      visible TINYINT(1) DEFAULT 1,
+      \`order\` INT DEFAULT 0
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  `);
+
+  // Create Skills Table
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS portfolio_skills (
+      id VARCHAR(50) PRIMARY KEY,
+      name VARCHAR(255) NOT NULL,
+      category VARCHAR(100),
+      level INT DEFAULT 0,
+      visible TINYINT(1) DEFAULT 1,
+      \`order\` INT DEFAULT 0
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  `);
+
+  // Create Certificates Table
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS portfolio_certificates (
+      id VARCHAR(50) PRIMARY KEY,
+      name VARCHAR(255) NOT NULL,
+      issuer VARCHAR(255),
+      issueDate VARCHAR(100),
+      credentialUrl VARCHAR(255),
+      imageUrl LONGTEXT,
+      impactProfessionnel LONGTEXT,
+      visible TINYINT(1) DEFAULT 1,
+      \`order\` INT DEFAULT 0
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  `);
+
+  // Create Testimonials Table
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS portfolio_testimonials (
+      id VARCHAR(50) PRIMARY KEY,
+      name VARCHAR(255) NOT NULL,
+      role VARCHAR(255),
+      company VARCHAR(255),
+      feedback TEXT,
+      rating INT DEFAULT 5,
+      avatarUrl LONGTEXT,
+      visible TINYINT(1) DEFAULT 1,
+      \`order\` INT DEFAULT 0
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  `);
+
+  // Create Messages Table
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS portfolio_messages (
+      id VARCHAR(50) PRIMARY KEY,
+      name VARCHAR(255) NOT NULL,
+      email VARCHAR(255) NOT NULL,
+      subject VARCHAR(255),
+      message TEXT,
+      date VARCHAR(100),
+      \`read\` TINYINT(1) DEFAULT 0,
+      status VARCHAR(50) DEFAULT 'new'
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  `);
+
+  // Add missing 'order' columns to existing tables for migration
+  const tablesToAddOrder = [
+    'portfolio_education',
+    'portfolio_experience_pro',
+    'portfolio_experience_benevole',
+    'portfolio_projects',
+    'portfolio_skills',
+    'portfolio_certificates',
+    'portfolio_testimonials'
+  ];
+
+  for (const tableName of tablesToAddOrder) {
+    try {
+      const [columns] = await pool.query(
+        `SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND COLUMN_NAME = 'order'`,
+        [process.env.MYSQL_DATABASE, tableName]
+      ) as any[];
+      
+      if (columns.length === 0) {
+        await pool.query(`ALTER TABLE ${tableName} ADD COLUMN \`order\` INT DEFAULT 0`);
+      }
+    } catch (err: any) {
+      // Column might already exist, continue
+    }
+  }
+  try {
+    const [certColumns] = await pool.query(
+      `SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'portfolio_certificates' AND COLUMN_NAME = 'impactProfessionnel'`,
+      [process.env.MYSQL_DATABASE]
+    ) as any[];
+    if (certColumns.length === 0) {
+      await pool.query(`ALTER TABLE portfolio_certificates ADD COLUMN impactProfessionnel LONGTEXT`);
+    }
+  } catch (err: any) {
+    // Column might already exist, continue
+  }
+  console.log("All MySQL tables checked/created successfully.");
+  console.log("Database schema ready. No automatic seeding performed - please populate via admin dashboard.");
+}
+
+// Set up MySQL schema tables (REQUIRED) - kept for backward compatibility with server.ts
 export async function initializeDatabase() {
   await ensureInitialized();
   if (!pool || !isUsingMySQL) {
     throw new Error("❌ MySQL pool is not initialized. Cannot proceed.");
   }
-
-  try {
-    // configureMySQLPacketSize is already called within ensureInitialized
-    console.log("📋 Creating/verifying MySQL database tables...");
-
-    // Helper to add missing columns without relying on MySQL 8+ syntax
-    async function ensureProfileColumn(columnName: string, definition: string) {
-      const [existingColumns] = await pool!.query(
-        `SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND COLUMN_NAME = ?`,
-        [process.env.MYSQL_DATABASE, "portfolio_profile", columnName]
-      ) as any[];
-      if (existingColumns.length === 0) {
-        await pool!.query(`ALTER TABLE portfolio_profile ADD COLUMN ${columnName} ${definition};`);
-      }
-    }
-
-    // Create Profile Table
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS portfolio_profile (
-        id VARCHAR(50) PRIMARY KEY,
-        name VARCHAR(255) NOT NULL,
-        title VARCHAR(255),
-        bio TEXT,
-        photoUrl LONGTEXT,
-        cvUrl LONGTEXT,
-        email VARCHAR(255),
-        phone VARCHAR(255),
-        location VARCHAR(255),
-        status VARCHAR(255),
-        github VARCHAR(255),
-        linkedin VARCHAR(255)
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-    `);
-
-    // Ensure schema can store full profile PDFs and the status field for older installs
-    await ensureProfileColumn("photoUrl", "LONGTEXT NULL");
-    await ensureProfileColumn("cvUrl", "LONGTEXT NULL");
-    await ensureProfileColumn("status", "VARCHAR(255) DEFAULT NULL");
-    await pool.query(`ALTER TABLE portfolio_profile MODIFY COLUMN photoUrl LONGTEXT NULL;`);
-    await pool.query(`ALTER TABLE portfolio_profile MODIFY COLUMN cvUrl LONGTEXT NULL;`);
-
-    // Create Education Table
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS portfolio_education (
-        id VARCHAR(50) PRIMARY KEY,
-        school VARCHAR(255) NOT NULL,
-        degree VARCHAR(255),
-        period VARCHAR(100),
-        location VARCHAR(255),
-        description TEXT,
-        grade VARCHAR(255),
-        visible TINYINT(1) DEFAULT 1,
-        \`order\` INT DEFAULT 0
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-    `);
-
-    // Create Experience Pro Table
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS portfolio_experience_pro (
-        id VARCHAR(50) PRIMARY KEY,
-        company VARCHAR(255) NOT NULL,
-        role VARCHAR(255),
-        period VARCHAR(100),
-        location VARCHAR(255),
-        description TEXT,
-        logoUrl LONGTEXT,
-        tags TEXT,
-        visible TINYINT(1) DEFAULT 1,
-        \`order\` INT DEFAULT 0
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-    `);
-
-    // Create Experience Benevole Table
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS portfolio_experience_benevole (
-        id VARCHAR(50) PRIMARY KEY,
-        organization VARCHAR(255) NOT NULL,
-        role VARCHAR(255),
-        period VARCHAR(100),
-        location VARCHAR(255),
-        description TEXT,
-        tags TEXT,
-        visible TINYINT(1) DEFAULT 1,
-        \`order\` INT DEFAULT 0
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-    `);
-
-    // Create Projects Table
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS portfolio_projects (
-        id VARCHAR(50) PRIMARY KEY,
-        title VARCHAR(255) NOT NULL,
-        description TEXT,
-        longDescription TEXT,
-        imageUrl LONGTEXT,
-        imageUrls LONGTEXT,
-        githubUrl VARCHAR(255),
-        demoUrl VARCHAR(255),
-        tags TEXT,
-        challenges TEXT,
-        visible TINYINT(1) DEFAULT 1,
-        \`order\` INT DEFAULT 0
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-    `);
-
-    // Create Skills Table
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS portfolio_skills (
-        id VARCHAR(50) PRIMARY KEY,
-        name VARCHAR(255) NOT NULL,
-        category VARCHAR(100),
-        level INT DEFAULT 0,
-        visible TINYINT(1) DEFAULT 1,
-        \`order\` INT DEFAULT 0
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-    `);
-
-    // Create Certificates Table
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS portfolio_certificates (
-        id VARCHAR(50) PRIMARY KEY,
-        name VARCHAR(255) NOT NULL,
-        issuer VARCHAR(255),
-        issueDate VARCHAR(100),
-        credentialUrl VARCHAR(255),
-        imageUrl LONGTEXT,
-        impactProfessionnel LONGTEXT,
-        visible TINYINT(1) DEFAULT 1,
-        \`order\` INT DEFAULT 0
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-    `);
-
-    // Create Testimonials Table
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS portfolio_testimonials (
-        id VARCHAR(50) PRIMARY KEY,
-        name VARCHAR(255) NOT NULL,
-        role VARCHAR(255),
-        company VARCHAR(255),
-        feedback TEXT,
-        rating INT DEFAULT 5,
-        avatarUrl LONGTEXT,
-        visible TINYINT(1) DEFAULT 1,
-        \`order\` INT DEFAULT 0
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-    `);
-
-    // Create Messages Table
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS portfolio_messages (
-        id VARCHAR(50) PRIMARY KEY,
-        name VARCHAR(255) NOT NULL,
-        email VARCHAR(255) NOT NULL,
-        subject VARCHAR(255),
-        message TEXT,
-        date VARCHAR(100),
-        \`read\` TINYINT(1) DEFAULT 0,
-        status VARCHAR(50) DEFAULT 'new'
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-    `);
-
-    // Add missing 'order' columns to existing tables for migration
-    const tablesToAddOrder = [
-      'portfolio_education',
-      'portfolio_experience_pro',
-      'portfolio_experience_benevole',
-      'portfolio_projects',
-      'portfolio_skills',
-      'portfolio_certificates',
-      'portfolio_testimonials'
-    ];
-
-    for (const tableName of tablesToAddOrder) {
-      try {
-        const [columns] = await pool.query(
-          `SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND COLUMN_NAME = 'order'`,
-          [process.env.MYSQL_DATABASE, tableName]
-        ) as any[];
-        
-        if (columns.length === 0) {
-          await pool.query(`ALTER TABLE ${tableName} ADD COLUMN \`order\` INT DEFAULT 0`);
-        }
-      } catch (err: any) {
-        // Column might already exist, continue
-      }
-    }
-    try {
-      const [certColumns] = await pool.query(
-        `SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'portfolio_certificates' AND COLUMN_NAME = 'impactProfessionnel'`,
-        [process.env.MYSQL_DATABASE]
-      ) as any[];
-      if (certColumns.length === 0) {
-        await pool.query(`ALTER TABLE portfolio_certificates ADD COLUMN impactProfessionnel LONGTEXT`);
-      }
-    } catch (err: any) {
-      // Column might already exist, continue
-    }
-    console.log("All MySQL tables checked/created successfully.");
-    console.log("Database schema ready. No automatic seeding performed - please populate via admin dashboard.");
-  } catch (err: any) {
-    console.error("❌ Failed to initialize MySQL schema tables:", err);
-    throw new Error(`Database initialization failed: ${err.message}`);
-  }
+  // Tables are already auto-created in ensureInitialized()
+  console.log("✅ Database initialization complete.");
 }
 
 // EXPORTED DATA CONTROLLER - MySQL ONLY
@@ -683,63 +695,10 @@ export async function savePortfolioData(dataset: {
         await connection.query(
           `INSERT INTO portfolio_testimonials (id, name, role, company, feedback, rating, avatarUrl, visible, \`order\`)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [test.id, test.name, test.role, test.company, test.feedback, test.rating, test.avatarUrl, test.visible ? 1 : 0, test.order || 0]
-        );
-      }
-    }
+          [test.id, test.name, test.role, test.company, test.feedback, test.rating, test.avatarUrl, test.visible ? 1 :Let me read the exact content around the area I need to edit:
 
-    await connection.commit();
-    console.log("✅ Data saved to MySQL database successfully");
-    return { success: true, savedTo: "mysql", status: dbStatusMessage };
-  } catch (err: any) {
-    await connection.rollback();
-    console.error("❌ Failed to save to MySQL database:", err);
-    throw new Error(`Database save error: ${err.message}`);
-  } finally {
-    connection.release();
-  }
-}
-
-// MESSAGES API CONTROLLERS - MySQL ONLY
-export async function getContactMessages() {
-  await ensureInitialized();
-  if (!pool || !isUsingMySQL) {
-    throw new Error("❌ MySQL pool is not available");
-  }
-
-  try {
-    const [rows] = await pool.query("SELECT * FROM portfolio_messages ORDER BY date DESC") as any[];
-    return rows.map((r: any) => ({
-      id: r.id,
-      name: r.name,
-      email: r.email,
-      subject: r.subject,
-      message: r.message,
-      date: r.date,
-      read: Boolean(r.read),
-      status: r.status as any,
-    }));
-  } catch (err) {
-    console.error("❌ Failed to fetch messages from MySQL:", err);
-    throw new Error(`Failed to fetch messages: ${err}`);
-  }
-}
-
-export async function saveContactMessages(messages: ContactMessage[]) {
-  await ensureInitialized();
-  if (!pool || !isUsingMySQL) {
-    throw new Error("❌ MySQL pool is not available");
-  }
-
-  try {
-    await pool.query("DELETE FROM portfolio_messages");
-    for (const msg of messages) {
-      await pool.query(
-        `INSERT INTO portfolio_messages (id, name, email, subject, message, date, \`read\`, status)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        [msg.id, msg.name, msg.email, msg.subject, msg.message, msg.date, msg.read ? 1 : 0, msg.status]
-      );
-    }
-    console.log("✅ Messages saved to MySQL");
-    return { success: true };
-  } catch (err: any) {
+<read_file>
+<path>
+c:/xampp82/htdocs/portfolio1/db.ts
+</path>
+</read_file>
