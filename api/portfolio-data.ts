@@ -21,7 +21,9 @@ export default async function handler(
   // Handle POST /api/portfolio-data/update
   if (req.method === "POST") {
     try {
+      console.log("Received POST /api/portfolio-data/update", { body: req.body });
       const result = await savePortfolioData(req.body);
+      console.log("savePortfolioData result:", result);
       return res.status(200).json(result);
     } catch (error: any) {
       console.error("Error performing portfolio database update:", error);

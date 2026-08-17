@@ -111,7 +111,7 @@ export default function App() {
   // SYNCHRONIZATION EFFECTS (Saves updates to relational DB only)
   useEffect(() => {
     if (!isDataLoaded) return;
-    fetch("/api/portfolio-data", {
+    fetch("/api/portfolio-data/update", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ profile }),
@@ -120,7 +120,7 @@ export default function App() {
 
   useEffect(() => {
     if (!isDataLoaded) return;
-    fetch("/api/portfolio-data", {
+    fetch("/api/portfolio-data/update", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ educationList }),
@@ -129,7 +129,7 @@ export default function App() {
 
   useEffect(() => {
     if (!isDataLoaded) return;
-    fetch("/api/portfolio-data", {
+    fetch("/api/portfolio-data/update", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ experienceProList }),
@@ -138,7 +138,7 @@ export default function App() {
 
   useEffect(() => {
     if (!isDataLoaded) return;
-    fetch("/api/portfolio-data", {
+    fetch("/api/portfolio-data/update", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ experienceBenevoleList }),
@@ -147,7 +147,7 @@ export default function App() {
 
   useEffect(() => {
     if (!isDataLoaded) return;
-    fetch("/api/portfolio-data", {
+    fetch("/api/portfolio-data/update", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ projectList }),
@@ -156,7 +156,7 @@ export default function App() {
 
   useEffect(() => {
     if (!isDataLoaded) return;
-    fetch("/api/portfolio-data", {
+    fetch("/api/portfolio-data/update", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ skillList }),
@@ -165,7 +165,7 @@ export default function App() {
 
   useEffect(() => {
     if (!isDataLoaded) return;
-    fetch("/api/portfolio-data", {
+    fetch("/api/portfolio-data/update", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ certificateList }),
@@ -174,7 +174,7 @@ export default function App() {
 
   useEffect(() => {
     if (!isDataLoaded) return;
-    fetch("/api/portfolio-data", {
+    fetch("/api/portfolio-data/update", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ testimonialList }),
