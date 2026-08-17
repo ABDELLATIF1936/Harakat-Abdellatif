@@ -1,12 +1,19 @@
-﻿{
+{
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "env": {
     "NODE_ENV": "production"
   },
+  "functions": {
+    "api/chat.ts": { "runtime": "nodejs20.x" },
+    "api/portfolio-data.ts": { "runtime": "nodejs20.x" },
+    "api/messages.ts": { "runtime": "nodejs20.x" },
+    "api/db-status.ts": { "runtime": "nodejs20.x" }
+  },
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/$1" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
+
