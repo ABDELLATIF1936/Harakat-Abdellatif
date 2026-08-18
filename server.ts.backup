@@ -1,4 +1,4 @@
-﻿/**
+/**
  * LOCAL DEVELOPMENT SERVER ONLY
  * This file is used for local development with Vite middleware.
  * On Vercel, serverless functions in /api directory handle all requests.
@@ -42,7 +42,7 @@ async function startServer() {
   // Mount API routes - use the same handler functions as Vercel serverless
   app.post("/api/chat", (req, res) => chatHandler(req, res));
   app.get("/api/portfolio-data", (req, res) => portfolioDataHandler(req, res));
-  app.post("/api/portfolio-data", (req, res) => portfolioDataHandler(req, res));
+  app.post("/api/portfolio-data/update", (req, res) => portfolioDataHandler(req, res));
   app.get("/api/messages", (req, res) => messagesHandler(req, res));
   app.post("/api/messages", (req, res) => messagesHandler(req, res));
   app.put("/api/messages", (req, res) => messagesHandler(req, res));
