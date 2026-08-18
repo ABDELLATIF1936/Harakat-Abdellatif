@@ -13,7 +13,7 @@ import {
   Certificate,
   Testimonial,
   ContactMessage,
-} from "./src/types";
+} from "./src/types.js";
 
 // Database Connection Manager - MYSQL ONLY (No local fallback)
 let pool: mysql.Pool | null = null;

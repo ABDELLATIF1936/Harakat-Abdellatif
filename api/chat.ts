@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { GoogleGenAI } from "@google/genai";
-import { getPortfolioData } from "../db";
+import { getPortfolioData } from "../db.js";
 
 // Initialize Gemini API client
 const apiKey = process.env.GEMINI_API_KEY || "";
