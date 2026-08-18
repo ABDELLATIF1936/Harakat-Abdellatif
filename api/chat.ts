@@ -83,7 +83,7 @@ Directives de conversation :
 
     // Request to Gemini API using modern SDK approach
     const response = await ai.models.generateContent({
-              model: "gemini-2.0-flash",
+              model: "gemini-3.6-flash",
       contents: formattedContents,
       config: {
         systemInstruction: systemInstruction,
